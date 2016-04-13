@@ -40,19 +40,17 @@ public class SignInActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_in);
 
-
-//        Bundle mBundle = getIntent().getExtras();
-//        if (mBundle != null) {
-//            int flag = mBundle.getInt("isSignOut");
-//            if (flag == 1) {
-//                Log.d("a", "a");
-//                signIn();
-//                Log.d("signin", "a");
-//                signOut();
-//            }
-//        }
         // Views
         mStatusTextView = (TextView) findViewById(R.id.status);
+        mStatusTextView.setVisibility(View.INVISIBLE);
+
+        Bundle mBundle = getIntent().getExtras();
+        if (mBundle != null) {
+            int flag = mBundle.getInt("isSignOut");
+            if (flag == 1) {
+                mStatusTextView.setVisibility(View.VISIBLE);
+            }
+        }
 
         // Button listeners
         findViewById(R.id.sign_in_button).setOnClickListener(this);
@@ -137,11 +135,11 @@ public class SignInActivity extends AppCompatActivity implements
             GoogleSignInAccount acct = result.getSignInAccount();
             mStatusTextView.setText(getString(R.string.signed_in_fmt, acct.getDisplayName()));
             Intent intent = new Intent(this, MainActivity.class);
+            Bundle mbundle = new Bundle();
+            mbundle.putString("username", acct.getDisplayName());
+            intent.putExtras(mbundle);
             startActivity(intent);
-            updateUI(true);
-        } else {
-            // Signed out, show unauthenticated UI.
-            updateUI(false);
+            finish();
         }
     }
     // [END handleSignInResult]
@@ -153,20 +151,6 @@ public class SignInActivity extends AppCompatActivity implements
     }
     // [END signIn]
 
-    // [START signOut]
-    private void signOut() {
-        Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-                new ResultCallback<Status>() {
-                    @Override
-                    public void onResult(Status status) {
-                        // [START_EXCLUDE]
-                        Log.d("logout", "Logout");
-                        updateUI(false);
-                        // [END_EXCLUDE]
-                    }
-                });
-    }
-    // [END signOut]
 
     // [START revokeAccess]
     private void revokeAccess() {
@@ -175,7 +159,7 @@ public class SignInActivity extends AppCompatActivity implements
                     @Override
                     public void onResult(Status status) {
                         // [START_EXCLUDE]
-                        updateUI(false);
+//                        updateUI(false);
                         // [END_EXCLUDE]
                     }
                 });
@@ -205,29 +189,12 @@ public class SignInActivity extends AppCompatActivity implements
         }
     }
 
-    private void updateUI(boolean signedIn) {
-        if (signedIn) {
-            findViewById(R.id.sign_in_button).setVisibility(View.GONE);
-            findViewById(R.id.sign_out_and_disconnect).setVisibility(View.VISIBLE);
-        } else {
-            mStatusTextView.setText(R.string.signed_out);
-
-            findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
-            findViewById(R.id.sign_out_and_disconnect).setVisibility(View.GONE);
-        }
-    }
 
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.sign_in_button:
                 signIn();
-                break;
-            case R.id.sign_out_button:
-                signOut();
-                break;
-            case R.id.disconnect_button:
-                revokeAccess();
                 break;
         }
     }

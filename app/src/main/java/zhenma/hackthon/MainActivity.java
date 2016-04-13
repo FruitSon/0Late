@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -19,11 +20,22 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
     private static final String TAG = "SignOutActivity";
     private GoogleApiClient mGoogleApiClient;
+    private TextView mTextView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+        mTextView = (TextView) findViewById(R.id.username);
+        Bundle mBundle = getIntent().getExtras();
+        if (mBundle != null) {
+            String username = mBundle.getString("username");
+            mTextView.setText(username);
+        }
+        else {
+            mTextView.setText("");
+        }
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
@@ -61,9 +73,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             mbundle.putInt("isSignOut", flag);
             intent.putExtras(mbundle);
             if (mGoogleApiClient.isConnected()) {
-                Log.d("sign", "has signed");
-//                mGoogleApiClient.disconnect();
-//                mGoogleApiClient.connect();
                 signOut();
             }
             startActivity(intent);
