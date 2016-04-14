@@ -7,9 +7,16 @@
     android:layout_height="match_parent"
     tools:context="zhenma.hackthon.MainActivity">
 
+    <ImageView
+        android:id="@+id/image"
+        android:layout_width="wrap_content"
+        android:layout_height="240dp"
+        android:src="@drawable/img_1"/>
+
     <TextView
         android:id="@+id/username"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello"/>
+        android:visibility="invisible">
+    </TextView>
 </LinearLayout>

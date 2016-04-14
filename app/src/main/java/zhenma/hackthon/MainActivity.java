@@ -63,28 +63,23 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Go back to the main menu if the back key is pressed
-        if (keyCode == KeyEvent.KEYCODE_BACK)
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
-
-                new AlertDialog.Builder(this).setTitle("Do you want to quit?")
-                        .setNegativeButton("Cancel",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog,
-                                                        int which) {
-                                    }
-                                }).setPositiveButton("OK",
-                        new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog,
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            new AlertDialog.Builder(this).setTitle("Do you want to quit?")
+                    .setNegativeButton("Cancel",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog,
+                                                    int which) {
+                                }
+                            }).setPositiveButton("OK",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog,
                                                 int whichButton) {
                                 android.os.Process.killProcess(android.os.Process.myPid());
                             }
                         }).show();
-                return true;
-            } else {
-                return super.onKeyDown(keyCode, event);
-            }
-
+            return true;
+        }
         return super.onKeyDown(keyCode, event);
     }
 
