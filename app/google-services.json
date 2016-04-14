@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_id": "vital-platform-128001",
-    "project_number": "974561259180",
+    "project_id": "neat-axis-128002",
+    "project_number": "298549661575",
     "name": "0Late"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:974561259180:android:b378062aad33d324",
+        "mobilesdk_app_id": "1:298549661575:android:b378062aad33d324",
         "client_id": "android:zhenma.hackthon",
         "client_type": 1,
         "android_client_info": {
