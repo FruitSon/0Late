@@ -3,12 +3,14 @@ package zhenma.hackthon;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.TextView;
 
 import com.google.android.gms.auth.api.Auth;
@@ -18,12 +20,22 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
+
+import java.util.Calendar;
+import java.util.Date;
+
 
 public class MainActivity extends AppCompatActivity implements OnConnectionFailedListener{
 
     private static final String TAG = "SignOutActivity";
     private GoogleApiClient mGoogleApiClient;
     private TextView mTextView;
+
+    //calendar
+    private Calendar mCurrentTime = Calendar.getInstance();
+    private Date selectedDay = Calendar.getInstance().getTime();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,7 +64,59 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //calendar,swipe vertically
+//                DatePickerDialog.OnDateSetListener mDateListener = new DatePickerDialog.OnDateSetListener() {
+//                    public void onDateSet(DatePicker view, int year, int monthOfYear,
+//                                          int dayOfMonth) {
+//                        mCurrentTime.set(Calendar.YEAR, year);
+//                        mCurrentTime.set(Calendar.MONTH, monthOfYear);
+//                        mCurrentTime.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+//                    }
+//                };
+//
+//                new DatePickerDialog(view.getContext(), mDateListener,
+//                        mCurrentTime.get(Calendar.YEAR),
+//                        mCurrentTime.get(Calendar.MONTH),
+//                        mCurrentTime.get(Calendar.DAY_OF_MONTH)).show();
+
+
+                //calendar,swipe horizontally
+                final MaterialCalendarView dialogView = (MaterialCalendarView) getLayoutInflater()
+                        .inflate(R.layout.horizontal_calendar, null, false);
+
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Pick the time")
+                        .setView(dialogView)
+                        .setNeutralButton("Cancel",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        dialogInterface.dismiss();
+                                    }
+                                }
+                        )
+                        .setPositiveButton("Confirm",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int which) {
+                                        Date selectedDay = dialogView.getSelectedDate().getDate();
+                                        System.out.println(selectedDay);
+
+                                        dialogInterface.dismiss();
+
+                                    }
+                                }
+                        ).create().show();
+            }
+        });
     }
+    
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -128,4 +192,5 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed:" + connectionResult);
     }
+
 }
