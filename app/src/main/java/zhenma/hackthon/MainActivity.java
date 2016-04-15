@@ -12,6 +12,8 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
@@ -47,6 +49,18 @@ import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,8 +68,12 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
+
 
 
 public class MainActivity extends AppCompatActivity implements OnConnectionFailedListener, EasyPermissions.PermissionCallbacks {
@@ -63,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     private static final String TAG = "SignOutActivity";
     private GoogleApiClient mGoogleApiClient;
     private TextView mTextView;
+    private Handler handler;
 
     private long msPerDay = 86400000;
 
@@ -100,21 +119,17 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         mProgress = new ProgressDialog(this);
         mProgress.setMessage("Calling Google Calendar API ...");
 
-        mTextView = (TextView) findViewById(R.id.username);
+        mTextView = (TextView) findViewById(R.id.res);
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
             name = mBundle.getString("username");
-            System.out.println(name);
         }
+
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .build();
-        // [END configure_signin]
 
-        // [START build_client]
-        // Build a GoogleApiClient with access to the Google Sign-In API and the
-        // options specified by gso.
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
@@ -149,10 +164,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                                         DateTime datetime = new DateTime(selectedDay.getTime());
                                         System.out.println(datetime);
                                         dialogInterface.dismiss();
-////                                        getResultsFromApi();
-//                                        startActivityForResult(
-//                                                mCredential.newChooseAccountIntent(),
-//                                                REQUEST_ACCOUNT_PICKER);
                                         mCredential.setSelectedAccountName(name);
                                         getResultsFromApi();
                                     }
@@ -165,7 +176,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         mCredential = GoogleAccountCredential.usingOAuth2(
                 getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
-//        mCredential.setSelectedAccountName(name);
     }
     
 
@@ -331,6 +341,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                 break;
             case REQUEST_AUTHORIZATION:
                 if (resultCode == RESULT_OK) {
+                    mCredential.setSelectedAccountName(name);
                     getResultsFromApi();
                 }
                 break;
@@ -471,7 +482,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         private List<String> getDataFromApi() throws IOException {
             // List the next 10 events from the primary calendar.
             DateTime now = new DateTime(System.currentTimeMillis());
-            System.out.println(now);
             List<String> eventStrings = new ArrayList<String>();
             Events events = mService.events().list("primary")
                     .setMaxResults(10)
@@ -484,13 +494,24 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
             for (Event event : items) {
                 DateTime start = event.getStart().getDateTime();
+                DateTime end = event.getEnd().getDateTime();
+                String location = event.getLocation();
+                String summary = event.getSummary();
+                System.out.println(start + " " + end + " " + location + " " + summary);
                 if (start == null) {
                     // All-day events don't have start times, so just use
                     // the start date.
                     start = event.getStart().getDate();
                 }
-                eventStrings.add(
-                        String.format("%s (%s)", event.getSummary(), start));
+                if (end == null) {
+                    end = event.getEnd().getDate();
+                }
+                String []res = new String[4];
+//                res[0] = summary;
+//                res[1] = location;
+//                res[2] =
+                System.out.println(start);
+                eventStrings.add(String.format("%s (%s)", event.getSummary(), start));
             }
             return eventStrings;
         }
@@ -511,6 +532,9 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                 output.add(0, "Data retrieved using the Google Calendar API:");
                 mOutputText.setText(TextUtils.join("\n", output));
             }
+            handler = new myHandler();
+            Thread t = new myThread("Sachem Circle Hanover NH", "Sudikoff Hanover NH");
+            t.start();
         }
 
         @Override
@@ -534,4 +558,78 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             }
         }
     }
+
+    class myHandler extends Handler{
+
+        @Override
+        public void handleMessage(Message msg) {
+            // TODO Auto-generated method stub
+            String xml=(String)msg.obj;
+            DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
+            try {
+                DocumentBuilder db=factory.newDocumentBuilder();
+                Document doc=db.parse(new ByteArrayInputStream(xml.getBytes()));
+
+                Element root=doc.getDocumentElement();
+
+                NodeList nodelist = root.getElementsByTagName("duration");
+                Element element = (Element)nodelist.item(0);
+                String res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
+                System.out.println(res);
+                mTextView.setText(res);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    class myThread extends Thread{
+        private String start, end;
+        public myThread(String start, String end) {
+            this.start = start;
+            this.end = end;
+        }
+        public void run(){
+            http httpclient = new http();
+            String xml;
+            String n_start = start.replace(" ", "+");
+            String n_end = end.replace(" ", "+");
+            System.out.println(n_start + " " + n_end);
+            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
+            while(true){
+                try {
+                    xml = httpclient.getXML(url);
+                    Message msg = handler.obtainMessage();
+                    msg.obj = xml;
+                    handler.sendMessage(msg);
+                    Thread.sleep(300*1000);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        }
+    }
 }
+
+class http {
+    private HttpClient httpclient;
+    public http(){
+        httpclient=new DefaultHttpClient();
+    }
+
+    public String getXML(String url) throws ClientProtocolException, IOException{
+        String xml=null;
+        HttpGet httpget=new HttpGet(url);
+        HttpResponse response=httpclient.execute(httpget);
+        if(response.getStatusLine().getStatusCode()==200){
+            HttpEntity entity=response.getEntity();
+            if(entity!=null){
+                xml= EntityUtils.toString(entity);
+            }
+        }
+        return xml;
+    }
+}
+
