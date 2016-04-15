@@ -12,14 +12,17 @@
             android:name=".SignInActivity"
             android:theme="@style/ThemeOverlay.MyNoTitleActivity"
             android:launchMode="singleTask">
+        </activity>
+        <activity android:name=".MainActivity"
+            android:launchMode="singleTop"></activity>
+        <activity android:name=".TimeListActivity"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MainActivity"
-            android:launchMode="singleTop"></activity>
     </application>
 
 </manifest>
