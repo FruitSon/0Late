@@ -54,8 +54,8 @@ public class SignInActivity extends AppCompatActivity implements
 
         // Button listeners
         findViewById(R.id.sign_in_button).setOnClickListener(this);
-        findViewById(R.id.sign_out_button).setOnClickListener(this);
-        findViewById(R.id.disconnect_button).setOnClickListener(this);
+//        findViewById(R.id.sign_out_button).setOnClickListener(this);
+//        findViewById(R.id.disconnect_button).setOnClickListener(this);
 
         // [START configure_signin]
         // Configure sign-in to request the user's ID, email address, and basic
@@ -136,7 +136,7 @@ public class SignInActivity extends AppCompatActivity implements
             mStatusTextView.setText(getString(R.string.signed_in_fmt, acct.getDisplayName()));
             Intent intent = new Intent(this, MainActivity.class);
             Bundle mbundle = new Bundle();
-            mbundle.putString("username", acct.getDisplayName());
+            mbundle.putString("username", acct.getEmail());
             intent.putExtras(mbundle);
             startActivity(intent);
             finish();
@@ -188,7 +188,6 @@ public class SignInActivity extends AppCompatActivity implements
             mProgressDialog.hide();
         }
     }
-
 
     @Override
     public void onClick(View v) {

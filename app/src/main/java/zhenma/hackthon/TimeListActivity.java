@@ -48,7 +48,7 @@ public class TimeListActivity extends AppCompatActivity implements FlyRefreshLay
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initDataSet();
+//        initDataSet();
         setContentView(R.layout.time_list);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -80,17 +80,17 @@ public class TimeListActivity extends AppCompatActivity implements FlyRefreshLay
         }
     }
 
-    private void initDataSet() {
-        mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, "Meeting Minutes", new Date(2014 - 1900, 2, 9)));
-        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Favorites Photos", new Date(2014 - 1900, 1, 3)));
-        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Photos", new Date(2014 - 1900, 0, 9)));
-    }
+//    private void initDataSet() {
+//        mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, "Meeting Minutes", new Date(2014 - 1900, 2, 9)));
+//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Favorites Photos", new Date(2014 - 1900, 1, 3)));
+//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Photos", new Date(2014 - 1900, 0, 9)));
+//    }
 
     private void addItemData() {
-        ItemData itemData = new ItemData(Color.parseColor("#FFC970"), R.mipmap.ic_assessment_white_24dp, "Magic Cube Show", new Date());
-        mDataSet.add(0, itemData);
-        mAdapter.notifyItemInserted(0);
-        mLayoutManager.scrollToPosition(0);
+//        ItemData itemData = new ItemData(Color.parseColor("#FFC970"), R.mipmap.ic_assessment_white_24dp, "Magic Cube Show", new Date());
+//        mDataSet.add(0, itemData);
+//        mAdapter.notifyItemInserted(0);
+//        mLayoutManager.scrollToPosition(0);
     }
 
     @Override
@@ -99,16 +99,16 @@ public class TimeListActivity extends AppCompatActivity implements FlyRefreshLay
         return true;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
+//    @Override
+//    public boolean onOptionsItemSelected(MenuItem item) {
+//        int id = item.getItemId();
+//
+//        if (id == R.id.action_settings) {
+//            return true;
+//        }
+//
+//        return super.onOptionsItemSelected(item);
+//    }
 
     @Override
     public void onRefresh(FlyRefreshLayout view) {
