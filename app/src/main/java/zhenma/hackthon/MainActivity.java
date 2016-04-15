@@ -216,7 +216,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_signout) {
             Intent intent = new Intent(this, SignInActivity.class);
             Bundle mbundle = new Bundle();
             int flag = 1;
