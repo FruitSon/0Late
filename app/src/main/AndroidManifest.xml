@@ -18,11 +18,7 @@
             android:name=".SignInActivity"
             android:launchMode="singleTask"
             android:theme="@style/ThemeOverlay.MyNoTitleActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity
             android:name=".TimeListActivity"
@@ -50,7 +46,15 @@
         <service
             android:name=".MonitorService"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true" />
+
+        <activity android:name=".AppActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

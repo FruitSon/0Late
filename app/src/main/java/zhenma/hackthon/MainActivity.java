@@ -478,8 +478,7 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
 //            Log.d("permission denied","true");
             return;
         }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                                                                          mGoogleApiClientLoc);
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc);
         
         if (mLastLocation != null) {
 //            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
