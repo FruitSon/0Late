@@ -2,18 +2,20 @@ package zhenma.hackthon;
 
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 
 /**
  * Created by dnalwqer on 4/16/16.
  */
 class myThread extends Thread{
-    private String start, end, mode;
+    private String start, end;
+    private int transport;
     private Handler handler;
 
-    public myThread(String start, String end, String mode) {
+    public myThread(String start, String end, int transport) {
         this.start = start;
         this.end = end;
-        this.mode = mode;
+        this.transport = transport;
     }
 
     public void setHandler(Handler handler) {
@@ -25,6 +27,20 @@ class myThread extends Thread{
         String n_start = start.replace(" ", "+");
         String n_end = end.replace(" ", "+");
         System.out.println(n_start + " " + n_end);
+        String mode = "walking";
+        switch (transport){
+            case 0:
+                mode = "walking";
+                break;
+            case 1:
+                mode = "driving";
+                break;
+            case 2:
+                mode = "bicycling";
+                break;
+            default:
+                mode = "walking";
+        }
         String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
         while(true){
             try {

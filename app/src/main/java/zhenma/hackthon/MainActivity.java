@@ -572,6 +572,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         mDataSet.clear();
         mAdapter.notifyDataSetChanged();
         mCredential.setSelectedAccountName(name);
+
+        new RequestCalendar(mCredential, this, 1).execute();
+        if(mThread != null && mThread.isAlive()){
+            mThread.interrupt();
+            mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), "New York", "");
+            mThread.setHandler(handler);
+            mThread.start();
+        }
         getResultsFromApi();
     }
 
@@ -706,10 +714,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
         mAdapter.notifyItemInserted(0);
         mLayoutManager.scrollToPosition(0);
-    }
-
-    public void updateTime(){
-
     }
 
     public DataBaseHelper getDataBaseHelper(){

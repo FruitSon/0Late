@@ -88,7 +88,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public List<ItemData> getEvents(String Date){
         SQLiteDatabase db = this.getWritableDatabase();
         Cursor cursor = db.rawQuery("select * from " + TABLE_NAME + " where Date=?", new String[]{Date});
-          List<ItemData> result = new ArrayList<>();
+        List<ItemData> result = new ArrayList<>();
         if(cursor.getCount() > 0) {
             cursor.moveToFirst();
             while (!cursor.isAfterLast()) {
@@ -111,5 +111,17 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             }
         }
         return result;
+    }
+
+    public int getTransport(String id){
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery("select Transport from " + TABLE_NAME + " where ID=?", new String[]{id});
+        if(cursor.getCount() > 0) {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                return cursor.getInt(0);
+            }
+        }
+        return -1;
     }
 }
