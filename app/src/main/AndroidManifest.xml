@@ -39,6 +39,18 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
+        <service
+            android:name=".AutoUpdateService"
+            android:enabled="true"
+            android:exported="true" />
+        <service
+            android:name=".PollingService"
+            android:enabled="true"
+            android:exported="true" />
+        <service
+            android:name=".MonitorService"
+            android:enabled="true"
+            android:exported="true"></service>
     </application>
 
 </manifest>
