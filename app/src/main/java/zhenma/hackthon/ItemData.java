@@ -1,10 +1,5 @@
 package zhenma.hackthon;
 
-import android.graphics.Color;
-
-import com.google.api.client.util.DateTime;
-
-import java.util.Date;
 /**
  * Created by xuehanyu on 4/13/16.
  */

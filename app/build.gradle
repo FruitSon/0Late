@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "zhenma.hackthon"
-        minSdkVersion 21
+        minSdkVersion 19
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
@@ -17,6 +17,8 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    useLibrary 'org.apache.http.legacy'
 }
 
 dependencies {
@@ -37,6 +39,6 @@ dependencies {
         exclude group: 'org.apache.httpcomponents'
     }
     compile 'com.prolificinteractive:material-calendarview:1.2.0'
+    compile 'com.google.android.gms:play-services-location:8.4.0'
 }
-
 apply plugin: 'com.google.gms.google-services'

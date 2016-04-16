@@ -3,6 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="zhenma.hackthon.MainActivity" >
     <item
+        android:id="@+id/action_calendar"
+        android:icon="@drawable/ic_calendar_btn"
+        android:title="@string/action_calendar"
+        app:showAsAction="ifRoom"
+        />
+
+    <item
         android:id="@+id/action_signout"
         android:icon="@drawable/ic_signout"
         android:title="@string/action_signout"
