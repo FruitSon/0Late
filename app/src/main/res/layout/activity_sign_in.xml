@@ -3,7 +3,7 @@
     android:id="@+id/main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/blue_grey_700"
+    android:background="@android:color/white"
     android:orientation="vertical"
     android:weightSum="4"
     tools:context=".legacy.MainActivity">
@@ -17,12 +17,12 @@
 
         <ImageView
             android:id="@+id/google_icon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
             android:layout_marginBottom="10dp"
             android:layout_marginTop="@dimen/g_top_margin"
             android:contentDescription="@string/desc_google_icon"
-            android:src="@drawable/googleg_color" />
+            android:src="@drawable/ic_app" />
 
         <TextView
             android:id="@+id/title_text"
@@ -31,7 +31,7 @@
             android:layout_marginBottom="10dp"
             android:text="@string/title_text"
             android:gravity="center"
-            android:textColor="@android:color/white"
+            android:textColor="@color/colorPrimaryDark"
             android:textSize="36sp" />
 
         <TextView
@@ -39,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/signed_out"
-            android:textColor="@android:color/white"
+            android:textColor="@color/colorPrimaryDark"
             android:textSize="14sp" />
 
         <TextView
@@ -51,7 +51,7 @@
             android:maxLines="5"
             android:padding="10dp"
             android:scrollbars="vertical"
-            android:textColor="@android:color/white"
+            android:textColor="@color/colorPrimaryDark"
             android:textSize="14sp" />
 
     </LinearLayout>
@@ -61,11 +61,11 @@
         android:layout_width="fill_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="@color/blue_grey_900">
+        android:background="@color/colorPrimaryDark">
 
         <com.google.android.gms.common.SignInButton
             android:id="@+id/sign_in_button"
-            android:layout_width="wrap_content"
+            android:layout_width="170dp"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:visibility="visible"

@@ -159,7 +159,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         mCredential.setSelectedAccountName(name);
         initialUI();
     }
-
     protected void onStart() {
         mGoogleApiClientLoc.connect();
         super.onStart();
