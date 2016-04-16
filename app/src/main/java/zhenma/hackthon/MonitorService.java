@@ -5,7 +5,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.CountDownTimer;
 import android.os.IBinder;
 
@@ -29,7 +28,9 @@ public class MonitorService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onCreate();
         System.out.println("monitor service start");
+        System.out.println("credential:"+Globals.GOOGLE_ACCOUNT_CREDENTIAL);
         new RequestCalendar(Globals.GOOGLE_ACCOUNT_CREDENTIAL).execute();
+        System.out.println("monitor-1-time: " + Globals.FIRST_TIME);
         autoCheck();
         return super.onStartCommand(intent, flags, startId);
     }
@@ -46,12 +47,12 @@ public class MonitorService extends Service {
 
                 System.out.println("autocheck test");
 
-                SharedPreferences tempSP = getSharedPreferences("latestEvent", MODE_PRIVATE);
-                String temp = tempSP.getString("1Time", "");
+                String temp = Globals.FIRST_TIME;
+                System.out.println("monitor Service:"+Globals.FIRST_TIME);
                 long deltaTime = 0;
 
                 //calculate waiting time
-                if(temp!="") {
+                if(!temp.equals("")) {
                     deltaTime = calculateWaitingTime(temp);
                     System.out.println("deltaTime:" + deltaTime);
 

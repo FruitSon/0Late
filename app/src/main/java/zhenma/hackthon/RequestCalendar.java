@@ -31,7 +31,7 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
     private int flag;
     private Date requestTime;
 
-    public RequestCalendar(GoogleAccountCredential credential, MainActivity activity, int flag) {
+    public RequestCalendar(GoogleAccountCredential credential, MainActivity activity) {
         HttpTransport transport = AndroidHttp.newCompatibleTransport();
         JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
         mService = new com.google.api.services.calendar.Calendar.Builder(
@@ -102,27 +102,31 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
                     .execute();
         }
         List<Event> items = events.getItems();
-        
-        for (Event event : items) {
-            DateTime startTime = event.getStart().getDateTime();
-            DateTime endTime = event.getEnd().getDateTime();
-            String eventName = event.getSummary();
-            String location = event.getLocation();
-            String s_time[] = startTime.toString().split("T");
-            String format_time = s_time[0] + " " + s_time[1].substring(0, 5);
-            activity.getDataBaseHelper().checkAndUpdate(event.getId(),activity.getSelectedDay().toString(),eventName,startTime.toString());
-            eventStrings.add(event.getId());
-        }
+        System.out.println("flag:" + flag);
+        if (flag == 0) {
+            for (Event event : items) {
+                DateTime startTime = event.getStart().getDateTime();
+                DateTime endTime = event.getEnd().getDateTime();
+                String eventName = event.getSummary();
+                String location = event.getLocation();
+                String s_time[] = startTime.toString().split("T");
+                String format_time = s_time[0] + " " + s_time[1].substring(0, 5);
+                activity.getDataBaseHelper().checkAndUpdate(event.getId(), activity.getSelectedDay().toString(), eventName, startTime.toString());
+                eventStrings.add(event.getId());
+            }
 
-        activity.getDataBaseHelper().deleteRemoved(eventStrings,activity.getSelectedDay().toString());
-        if(flag == 1){
+
+            activity.getDataBaseHelper().deleteRemoved(eventStrings, activity.getSelectedDay().toString());
+        }
+        else if(flag == 1){
+
             if(items.size()>0) {
                 Globals.FIRST_TIME = items.get(0).getStart().getDateTime().toStringRfc3339();
                 Globals.FIRST_EVENT = items.get(0).getSummary();
                 Globals.FIRST_LOCATION = items.get(0).getLocation();
                 Globals.FIRST_ID = items.get(0).getId();
             }
-            System.out.println("firstEventTime:" + items.get(0).getStart().getDateTime().toStringRfc3339());
+            System.out.println("firstLocation:" + items.get(0).getStart().getDateTime().toStringRfc3339());
         }
         return eventStrings;
     }

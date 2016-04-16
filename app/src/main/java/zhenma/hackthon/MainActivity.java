@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else if (!isDeviceOnline()) {
             Toast.makeText(this, "No network connection available.", Toast.LENGTH_SHORT).show();
         } else {
-            new RequestCalendar(mCredential, this, 0).execute();
+            new RequestCalendar(mCredential, this).execute();
         }
     }
     
@@ -459,11 +459,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc);
         
         if (mLastLocation != null) {
-//            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
-//            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
+            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
+            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
         }else {
-//            Log.d("mLastLocation==null","true");
+            Log.d("mLastLocation==null","true");
         }
+
+
         //Thread for google map
         mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), "Sachem Circle", "");
         handler = new myHandler();
