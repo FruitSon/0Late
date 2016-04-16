@@ -2,12 +2,16 @@ package zhenma.hackthon;
 
 import android.Manifest;
 import android.accounts.AccountManager;
+import android.animation.Animator;
+import android.animation.ObjectAnimator;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.shapes.OvalShape;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -18,13 +22,18 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.AccelerateInterpolator;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.android.gms.auth.api.Auth;
@@ -48,6 +57,7 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
+import com.race604.flyrefresh.FlyRefreshLayout;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -62,11 +72,14 @@ import org.w3c.dom.NodeList;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -75,9 +88,18 @@ import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
 
+public class MainActivity extends AppCompatActivity implements OnConnectionFailedListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRefreshListener {
+    //UI
+    private FlyRefreshLayout mFlylayout;
+    private RecyclerView mListView;
 
-public class MainActivity extends AppCompatActivity implements OnConnectionFailedListener, EasyPermissions.PermissionCallbacks {
+    private ItemAdapter mAdapter;
 
+    private ArrayList<ItemData> mDataSet = new ArrayList<>();
+    private Handler mHandler = new Handler();
+    private LinearLayoutManager mLayoutManager;
+
+    //data
     private static final String TAG = "SignOutActivity";
     private GoogleApiClient mGoogleApiClient;
     private TextView mTextView;
@@ -86,12 +108,9 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     private long msPerDay = 86400000;
 
     //calendar
-    private Calendar mCurrentTime = Calendar.getInstance();
     private Date selectedDay = Calendar.getInstance().getTime();
 
     GoogleAccountCredential mCredential;
-    private TextView mOutputText;
-    ProgressDialog mProgress;
     private String name = "";
 
     static final int REQUEST_ACCOUNT_PICKER = 100;
@@ -107,18 +126,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main);
-
-        mOutputText = (TextView)findViewById(R.id.res);
-        mOutputText.setPadding(16, 16, 16, 16);
-        mOutputText.setVerticalScrollBarEnabled(true);
-        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        mOutputText.setText(
-                "Click the \'" + BUTTON_TEXT + "\' button to test the API.");
-
-        mProgress = new ProgressDialog(this);
-        mProgress.setMessage("Calling Google Calendar API ...");
-
+        setContentView(R.layout.time_list);
         mTextView = (TextView) findViewById(R.id.res);
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
@@ -165,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                                         System.out.println(datetime);
                                         dialogInterface.dismiss();
                                         mCredential.setSelectedAccountName(name);
-                                        getResultsFromApi();
+                                        freshData();
                                     }
                                 }
                         ).create().show();
@@ -176,8 +184,10 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         mCredential = GoogleAccountCredential.usingOAuth2(
                 getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
+        mCredential.setSelectedAccountName(name);
+        initialUI();
     }
-    
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -257,7 +267,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
         } else if (! isDeviceOnline()) {
-            mOutputText.setText("No network connection available.");
         } else {
             new MakeRequestTask(mCredential).execute();
         }
@@ -315,9 +324,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         switch(requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
-                    mOutputText.setText(
-                            "This app requires Google Play Services. Please install " +
-                                    "Google Play Services on your device and relaunch this app.");
+
                 } else {
                     getResultsFromApi();
                 }
@@ -446,7 +453,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
      * An asynchronous task that handles the Google Calendar API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
      */
-    private class MakeRequestTask extends AsyncTask<Void, Void, List<String>> {
+    private class MakeRequestTask extends AsyncTask<Void, Void, List<String[]>> {
         private com.google.api.services.calendar.Calendar mService = null;
         private Exception mLastError = null;
 
@@ -464,10 +471,11 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
          * @param params no parameters needed for this task.
          */
         @Override
-        protected List<String> doInBackground(Void... params) {
+        protected List<String[]> doInBackground(Void... params) {
             try {
                 return getDataFromApi();
             } catch (Exception e) {
+                Log.d("main",e.toString());
                 mLastError = e;
                 cancel(true);
                 return null;
@@ -479,10 +487,10 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
          * @return List of Strings describing returned events.
          * @throws IOException
          */
-        private List<String> getDataFromApi() throws IOException {
+        private List<String[]> getDataFromApi() throws IOException {
             // List the next 10 events from the primary calendar.
             DateTime now = new DateTime(System.currentTimeMillis());
-            List<String> eventStrings = new ArrayList<String>();
+            List<String[]> eventStrings = new ArrayList<>();
             Events events = mService.events().list("primary")
                     .setMaxResults(10)
                     .setTimeMin(new DateTime(selectedDay.getTime()))
@@ -493,25 +501,23 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             List<Event> items = events.getItems();
 
             for (Event event : items) {
-                DateTime start = event.getStart().getDateTime();
-                DateTime end = event.getEnd().getDateTime();
+                DateTime startTime = event.getStart().getDateTime();
+                DateTime endTime = event.getEnd().getDateTime();
+                String eventName = event.getSummary();
                 String location = event.getLocation();
-                String summary = event.getSummary();
-                System.out.println(start + " " + end + " " + location + " " + summary);
-                if (start == null) {
+                Log.d("main", eventName);
+                mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, eventName, startTime));
+                if (startTime == null) {
                     // All-day events don't have start times, so just use
                     // the start date.
-                    start = event.getStart().getDate();
-                }
-                if (end == null) {
-                    end = event.getEnd().getDate();
+                    startTime = event.getStart().getDate();
                 }
                 String []res = new String[4];
-//                res[0] = summary;
-//                res[1] = location;
-//                res[2] =
-                System.out.println(start);
-                eventStrings.add(String.format("%s (%s)", event.getSummary(), start));
+                res[0] = eventName;
+                res[1] = location;
+                res[2] = startTime.toString();
+                res[3] = endTime.toString();
+                eventStrings.add(res);
             }
             return eventStrings;
         }
@@ -519,27 +525,24 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
         @Override
         protected void onPreExecute() {
-            mOutputText.setText("");
-            mProgress.show();
         }
 
         @Override
-        protected void onPostExecute(List<String> output) {
-            mProgress.hide();
-            if (output == null || output.size() == 0) {
-                mOutputText.setText("No results returned.");
-            } else {
-                output.add(0, "Data retrieved using the Google Calendar API:");
-                mOutputText.setText(TextUtils.join("\n", output));
-            }
+        protected void onPostExecute(List<String[]> output) {
+            mAdapter.notifyItemInserted(0);
+            mLayoutManager.scrollToPosition(0);
             handler = new myHandler();
-            Thread t = new myThread("Sachem Circle Hanover NH", "Sudikoff Hanover NH");
+//            String dest = output.get(0)[1];
+            String ori = "Sachem Circle Hanover NH";
+            String dest = "Dartmouth Hall NH";
+            String mode = "";
+            Thread t = new myThread(ori, dest, mode);
             t.start();
+            Log.d("main","done");
         }
 
         @Override
         protected void onCancelled() {
-            mProgress.hide();
             if (mLastError != null) {
                 if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
                     showGooglePlayServicesAvailabilityErrorDialog(
@@ -550,11 +553,10 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                             ((UserRecoverableAuthIOException) mLastError).getIntent(),
                             MainActivity.REQUEST_AUTHORIZATION);
                 } else {
-                    mOutputText.setText("The following error occurred:\n"
-                            + mLastError.getMessage());
+
                 }
             } else {
-                mOutputText.setText("Request cancelled.");
+
             }
         }
     }
@@ -576,7 +578,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                 Element element = (Element)nodelist.item(0);
                 String res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
                 System.out.println(res);
-                mTextView.setText(res);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -586,10 +587,11 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     }
 
     class myThread extends Thread{
-        private String start, end;
-        public myThread(String start, String end) {
+        private String start, end, mode;
+        public myThread(String start, String end, String mode) {
             this.start = start;
             this.end = end;
+            this.mode = mode;
         }
         public void run(){
             http httpclient = new http();
@@ -601,6 +603,8 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             while(true){
                 try {
                     xml = httpclient.getXML(url);
+                    System.out.println(url);
+                    System.out.println(xml);
                     Message msg = handler.obtainMessage();
                     msg.obj = xml;
                     handler.sendMessage(msg);
@@ -611,6 +615,166 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             }
         }
     }
+
+    private void initialUI(){
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
+
+        mFlylayout = (FlyRefreshLayout) findViewById(R.id.fly_layout);
+
+        mFlylayout.setOnPullRefreshListener(this);
+
+        mListView = (RecyclerView) findViewById(R.id.list);
+
+        mLayoutManager = new LinearLayoutManager(this);
+        mListView.setLayoutManager(mLayoutManager);
+        mAdapter = new ItemAdapter(this);
+
+        mListView.setAdapter(mAdapter);
+
+        mListView.setItemAnimator(new TimeListItem());
+
+        View actionButton = mFlylayout.getHeaderActionButton();
+        if (actionButton != null) {
+            actionButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mFlylayout.startRefresh();
+                }
+            });
+        }
+        freshData();
+    }
+
+    private void freshData() {
+//        mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, "Meeting Minutes", new Date(2014 - 1900, 2, 9)));
+//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Favorites Photos", new Date(2014 - 1900, 1, 3)));
+//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Photos", new Date(2014 - 1900, 0, 9)));
+        Log.d("main","fresh");
+        mDataSet.clear();
+        mAdapter.notifyDataSetChanged();
+        mCredential.setSelectedAccountName(name);
+        Log.d("main_Name",name);
+        getResultsFromApi();
+    }
+
+    private void addItemData() {
+        mDataSet.clear();
+        mAdapter.notifyDataSetChanged();
+
+        mAdapter.notifyItemInserted(0);
+        mLayoutManager.scrollToPosition(0);
+    }
+
+    @Override
+    public void onRefresh(FlyRefreshLayout view) {
+        View child = mListView.getChildAt(0);
+        if (child != null) {
+            bounceAnimateView(child.findViewById(R.id.icon));
+        }
+
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mFlylayout.onRefreshFinish();
+            }
+        }, 2000);
+    }
+
+    private void bounceAnimateView(View view) {
+        if (view == null) {
+            return;
+        }
+
+        Animator swing = ObjectAnimator.ofFloat(view, "rotationX", 0, 30, -20, 0);
+        swing.setDuration(400);
+        swing.setInterpolator(new AccelerateInterpolator());
+        swing.start();
+    }
+
+    @Override
+    public void onRefreshAnimationEnd(FlyRefreshLayout view) {
+        freshData();
+    }
+
+    private class ItemAdapter extends RecyclerView.Adapter<ItemViewHolder> {
+
+        private LayoutInflater mInflater;
+        private DateFormat dateFormat;
+
+        public ItemAdapter(Context context) {
+            mInflater = LayoutInflater.from(context);
+            dateFormat = SimpleDateFormat.getDateInstance(DateFormat.DEFAULT, Locale.ENGLISH);
+        }
+
+        @Override
+        public ItemViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
+            View view = mInflater.inflate(R.layout.time_list_item, viewGroup, false);
+            return new ItemViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(ItemViewHolder itemViewHolder, int i) {
+            final ItemData data = mDataSet.get(i);
+            ShapeDrawable drawable = new ShapeDrawable(new OvalShape());
+            drawable.getPaint().setColor(data.color);
+            itemViewHolder.icon.setBackgroundDrawable(drawable);
+            itemViewHolder.icon.setImageResource(data.icon);
+            itemViewHolder.title.setText(data.title);
+            itemViewHolder.subTitle.setText((data.time).toString());
+        }
+
+        @Override
+        public int getItemCount() {
+            return mDataSet.size();
+        }
+    }
+
+    private static class ItemViewHolder extends RecyclerView.ViewHolder {
+
+        ImageView icon;
+        TextView title;
+        TextView subTitle;
+
+        public ItemViewHolder(View itemView) {
+            super(itemView);
+            icon = (ImageView) itemView.findViewById(R.id.icon);
+            title = (TextView) itemView.findViewById(R.id.title);
+            subTitle = (TextView) itemView.findViewById(R.id.subtitle);
+        }
+
+    }
+
+    private void resetTrans(android.widget.LinearLayout l){
+        ((android.widget.ImageView)l.getChildAt(0)).setImageResource(R.mipmap.walk_g);
+        ((android.widget.ImageView)l.getChildAt(1)).setImageResource(R.mipmap.drive_g);
+        ((android.widget.ImageView)l.getChildAt(2)).setImageResource(R.mipmap.bus_g);
+    }
+
+    public void clickWalk(View v){
+        resetTrans((android.widget.LinearLayout) v.getParent());
+        ((android.widget.ImageView)v).setImageResource(R.mipmap.walk_c);
+        android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
+        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
+        Log.d("click", "walk:" + textView.getText());
+    }
+
+    public void clickDrive(View v){
+        resetTrans((android.widget.LinearLayout)v.getParent());
+        ((android.widget.ImageView)v).setImageResource(R.mipmap.drive_c);
+        android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
+        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
+        Log.d("click", "Drive:" + textView.getText());
+    }
+
+    public void clickBus(View v){
+        resetTrans((android.widget.LinearLayout)v.getParent());
+        ((android.widget.ImageView)v).setImageResource(R.mipmap.bus_c);
+        android.widget.RelativeLayout l = (android.widget.RelativeLayout) v.getParent().getParent();
+        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
+        Log.d("click", "Bus:" + textView.getText());
+    }
 }
 
 class http {
@@ -619,17 +783,19 @@ class http {
         httpclient=new DefaultHttpClient();
     }
 
-    public String getXML(String url) throws ClientProtocolException, IOException{
-        String xml=null;
-        HttpGet httpget=new HttpGet(url);
-        HttpResponse response=httpclient.execute(httpget);
-        if(response.getStatusLine().getStatusCode()==200){
-            HttpEntity entity=response.getEntity();
-            if(entity!=null){
-                xml= EntityUtils.toString(entity);
+    public String getXML(String url) throws ClientProtocolException, IOException {
+        String xml = null;
+        HttpGet httpget = new HttpGet(url);
+        HttpResponse response = httpclient.execute(httpget);
+        if (response.getStatusLine().getStatusCode() == 200) {
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                xml = EntityUtils.toString(entity);
             }
         }
         return xml;
     }
 }
+
+
 
