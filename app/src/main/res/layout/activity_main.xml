@@ -8,12 +8,4 @@
     android:fitsSystemWindows="true"
     tools:context="zhenma.hackthon.MainActivity">
 
-    <TextView
-        android:id="@+id/res"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-    </TextView>
-
-
-
 </android.support.design.widget.CoordinatorLayout>

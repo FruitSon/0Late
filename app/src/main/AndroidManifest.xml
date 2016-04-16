@@ -12,11 +12,13 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_app"
         android:label="@string/app_name"
+        android:screenOrientation="portrait"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
             android:name=".SignInActivity"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:theme="@style/ThemeOverlay.MyNoTitleActivity">
 
         </activity>
@@ -29,12 +31,20 @@
         </activity>
         <activity
             android:name=".MainActivity"
-            android:launchMode="singleTop" />
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait" />
 
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
+        <activity android:name=".AppActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <service
             android:name=".AutoUpdateService"
             android:enabled="true"
@@ -47,14 +57,10 @@
             android:name=".MonitorService"
             android:enabled="true"
             android:exported="true" />
-
-        <activity android:name=".AppActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <service
+            android:name=".NotifyService"
+            android:enabled="true"
+            android:exported="true"></service>
     </application>
 
 </manifest>

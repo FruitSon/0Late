@@ -10,14 +10,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
 import android.location.Location;
 import android.location.LocationListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -38,6 +36,7 @@ import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -47,34 +46,18 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationServices;
-import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
-import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
-import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.DateTime;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.calendar.CalendarScopes;
-import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.Events;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.race604.flyrefresh.FlyRefreshLayout;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -86,36 +69,38 @@ import java.util.Locale;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
-GoogleApiClient.OnConnectionFailedListener,
-LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRefreshListener {
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRefreshListener {
     //UI
     private FlyRefreshLayout mFlylayout;
     private RecyclerView mListView;
-    
     private ItemAdapter mAdapter;
-    
+    private DataBaseHelper helper;
     private ArrayList<ItemData> mDataSet = new ArrayList<>();
     private Handler mHandler = new Handler();
-    private LinearLayoutManager mLayoutManager;
-    
-    //data
-    private static final String TAG = "SignOutActivity";
-    private GoogleApiClient mGoogleApiClient;
+    public LinearLayoutManager mLayoutManager;
+    public TextView mTextView;
 
-    private Handler handler;
-    private long msPerDay = 86400000;
-    
+    //data
+    private static final String TAG = "SignOut";
+    private GoogleApiClient mGoogleApiClient;
+    private myThread mThread;
+    public Handler handler;
+
     //calendar
-    private Date selectedDay = Calendar.getInstance().getTime();
-    
+    public Date selectedDay = Calendar.getInstance().getTime();
+    private long msPerDay = 86400000;
+    private int today = Calendar.getInstance().get(Calendar.DATE);
+
     GoogleAccountCredential mCredential;
     private String name = "";
-    
+
     static final int REQUEST_ACCOUNT_PICKER = 100;
     static final int REQUEST_AUTHORIZATION = 101;
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 102;
@@ -132,7 +117,7 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
         super.onCreate(savedInstanceState);
         
         setContentView(R.layout.time_list);
-
+        mTextView = (TextView) findViewById(R.id.res);
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
             name = mBundle.getString("username");
@@ -154,14 +139,18 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
-
+        helper = new DataBaseHelper(getApplicationContext());
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
                                                           getApplicationContext(), Arrays.asList(SCOPES))
         .setBackOff(new ExponentialBackOff());
         mCredential.setSelectedAccountName(name);
+
         initialUI();
-        startService(new Intent(this,MonitorService.class));
+
+        Globals.GOOGLE_ACCOUNT_CREDENTIAL = mCredential;
+
+        startService(new Intent(this, MonitorService.class));
     }
     
     protected void onStart() {
@@ -245,7 +234,7 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
                                 public void onClick(DialogInterface dialogInterface, int which) {
                                     selectedDay = dialogView.getSelectedDate().getDate();
                                     DateTime datetime = new DateTime(selectedDay.getTime());
-                                    System.out.println(datetime);
+//                                    System.out.println(datetime);
                                     dialogInterface.dismiss();
                                     mCredential.setSelectedAccountName(name);
                                     freshData();
@@ -259,14 +248,13 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
     
     private void signOut() {
         Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-                                                                         new ResultCallback<Status>() {
-                                                                             @Override
-                                                                             public void onResult(Status status) {
-                                                                                 // [START_EXCLUDE]
-                                                                                 Log.d("logout", "Logout");
-                                                                                 // [END_EXCLUDE]
-                                                                             }
-                                                                         });
+                new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(Status status) {
+                        // [START_EXCLUDE]
+                        // [END_EXCLUDE]
+                    }
+                });
         mCredential.newChooseAccountIntent();
     }
     
@@ -280,10 +268,12 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
         if (!isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
         } else if (mCredential.getSelectedAccountName() == null) {
+            mCredential.setSelectedAccountName(name);
             chooseAccount();
         } else if (!isDeviceOnline()) {
+            Toast.makeText(this, "No network connection available.", Toast.LENGTH_SHORT).show();
         } else {
-            new MakeRequestTask(mCredential).execute();
+            new RequestCalendar(mCredential, this, 0).execute();
         }
     }
     
@@ -299,10 +289,8 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
      */
     @AfterPermissionGranted(REQUEST_PERMISSION_GET_ACCOUNTS)
     private void chooseAccount() {
-        if (EasyPermissions.hasPermissions(
-                                           this, Manifest.permission.GET_ACCOUNTS)) {
-            String accountName = getPreferences(Context.MODE_PRIVATE)
-            .getString(PREF_ACCOUNT_NAME, null);
+        if (EasyPermissions.hasPermissions(this, Manifest.permission.GET_ACCOUNTS)) {
+            String accountName = name;
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
                 getResultsFromApi();
@@ -347,9 +335,7 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
             case REQUEST_ACCOUNT_PICKER:
                 if (resultCode == RESULT_OK && data != null &&
                     data.getExtras() != null) {
-                    String accountName =
-                    data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-                    System.out.println(accountName);
+                    String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
                     if (accountName != null) {
                         SharedPreferences settings =
                         getPreferences(Context.MODE_PRIVATE);
@@ -468,14 +454,6 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
     public void onConnected(Bundle bundle) {
         Log.d("onConnected", "Yes");
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-//            Log.d("permission denied","true");
             return;
         }
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc);
@@ -486,6 +464,11 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
         }else {
 //            Log.d("mLastLocation==null","true");
         }
+        //Thread for google map
+        mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), "Sachem Circle", "");
+        handler = new myHandler();
+        mThread.setHandler(handler);
+        mThread.start();
     }
     
     @Override
@@ -512,136 +495,18 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
     public void onProviderDisabled(String provider) {
         
     }
-    
+
+    public Date getSelectedDay() {
+        return this.selectedDay;
+    }
+
     /**
      * An asynchronous task that handles the Google Calendar API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
      */
-    private class MakeRequestTask extends AsyncTask<Void, Void, List<String[]>> {
-        private com.google.api.services.calendar.Calendar mService = null;
-        private Exception mLastError = null;
-        
-        public MakeRequestTask(GoogleAccountCredential credential) {
-            HttpTransport transport = AndroidHttp.newCompatibleTransport();
-            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-            mService = new com.google.api.services.calendar.Calendar.Builder(
-                                                                             transport, jsonFactory, credential)
-            .setApplicationName("0Late")
-            .build();
-        }
-
-
-
-        /**
-         * Background task to call Google Calendar API.
-         * @param params no parameters needed for this task.
-         */
-        @Override
-        protected List<String[]> doInBackground(Void... params) {
-            try {
-                return getDataFromApi();
-            } catch (Exception e) {
-                Log.d("main",e.toString());
-                mLastError = e;
-                cancel(true);
-                return null;
-            }
-        }
-        
-        /**
-         * Fetch a list of the next 10 events from the primary calendar.
-         * @return List of Strings describing returned events.
-         * @throws IOException
-         */
-        private List<String[]> getDataFromApi() throws IOException {
-            // List the next 10 events from the primary calendar.
-            DateTime now = new DateTime(System.currentTimeMillis());
-            List<String[]> eventStrings = new ArrayList<>();
-            Events events = mService.events().list("primary")
-            .setMaxResults(10)
-            .setTimeMin(new DateTime(selectedDay.getTime()))
-            .setTimeMax(new DateTime(selectedDay.getTime() + 86400000))
-            .setOrderBy("startTime")
-            .setSingleEvents(true)
-            .execute();
-            List<Event> items = events.getItems();
-
-            SharedPreferences sp = getSharedPreferences("latestEvent", MODE_PRIVATE);
-            SharedPreferences.Editor editor = sp.edit();
-            if(items.size()>0) {
-                editor.putString("1Time", items.get(0).getStart().getDateTime().toStringRfc3339());
-                editor.putString("1Location", items.get(0).getLocation());
-                editor.commit();
-            }
-            System.out.println("firstEventTime:" + items.get(0).getStart().getDateTime().toStringRfc3339());
-
-            for (Event event : items) {
-                DateTime startTime = event.getStart().getDateTime();
-                DateTime endTime = event.getEnd().getDateTime();
-                String eventName = event.getSummary();
-                String location = event.getLocation();
-                Log.d("main", eventName);
-                mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, eventName, startTime));
-                if (startTime == null) {
-                    // All-day events don't have start times, so just use
-                    // the start date.
-                    startTime = event.getStart().getDate();
-                }
-                String []res = new String[4];
-                res[0] = eventName;
-                res[1] = location;
-                res[2] = startTime.toString();
-                res[3] = endTime.toString();
-                eventStrings.add(res);
-            }
-            return eventStrings;
-        }
-        
-        
-        @Override
-        protected void onPreExecute() {
-        }
-        
-        @Override
-        protected void onPostExecute(List<String[]> output) {
-            mAdapter.notifyItemInserted(0);
-            mLayoutManager.scrollToPosition(0);
-            handler = new myHandler();
-            if (output.size() > 0) {
-                String dest = output.get(0)[1];
-                String ori = mLastLocation.getLatitude()+","+mLastLocation.getLongitude();
-                String mode = "";
-                Thread t = new myThread(ori, dest, mode);
-                t.start();
-                Log.d("main","done");
-            }
-        }
-        
-        @Override
-        protected void onCancelled() {
-            if (mLastError != null) {
-                if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
-                    showGooglePlayServicesAvailabilityErrorDialog(
-                                                                  ((GooglePlayServicesAvailabilityIOException) mLastError)
-                                                                  .getConnectionStatusCode());
-                } else if (mLastError instanceof UserRecoverableAuthIOException) {
-                    startActivityForResult(
-                                           ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                                           MainActivity.REQUEST_AUTHORIZATION);
-                } else {
-                    
-                }
-            } else {
-                
-            }
-        }
-    }
-    
     class myHandler extends Handler{
-        
         @Override
         public void handleMessage(Message msg) {
-            // TODO Auto-generated method stub
             String xml=(String)msg.obj;
             DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
             try {
@@ -651,64 +516,35 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
                 Element root=doc.getDocumentElement();
                 
                 NodeList nodelist = root.getElementsByTagName("duration");
-                Element element = (Element)nodelist.item(0);
-                String res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
-                System.out.println(res);
+                String res = "Default: 1 Hour";
+                if (nodelist != null) {
+                    Element element = (Element)nodelist.item(0);
+                    res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
+                }
+                mTextView.setText(res);
+                System.out.println("Get the result");
+
             } catch (Exception e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
         
     }
-    
-    class myThread extends Thread{
-        private String start, end, mode;
-        public myThread(String start, String end, String mode) {
-            this.start = start;
-            this.end = end;
-            this.mode = mode;
-        }
-        public void run(){
-            http httpclient = new http();
-            String xml;
-            String n_start = start.replace(" ", "+");
-            String n_end = end.replace(" ", "+");
-//            System.out.println(n_start + " " + n_end);
-            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
-            while(true){
-                try {
-                    xml = httpclient.getXML(url);
-//                    System.out.println(url);
-//                    System.out.println(xml);
-                    Message msg = handler.obtainMessage();
-                    msg.obj = xml;
-                    handler.sendMessage(msg);
-                    Thread.sleep(300*1000);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
-            }
-        }
-    }
-    
+
     private void initialUI(){
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
         
         mFlylayout = (FlyRefreshLayout) findViewById(R.id.fly_layout);
-        
         mFlylayout.setOnPullRefreshListener(this);
-        
+
         mListView = (RecyclerView) findViewById(R.id.list);
-        
         mLayoutManager = new LinearLayoutManager(this);
         mListView.setLayoutManager(mLayoutManager);
         mAdapter = new ItemAdapter(this);
-        
+
         mListView.setAdapter(mAdapter);
-        
         mListView.setItemAnimator(new TimeListItem());
         
         View actionButton = mFlylayout.getHeaderActionButton();
@@ -724,22 +560,12 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
     }
     
     private void freshData() {
-        Log.d("main","fresh");
         mDataSet.clear();
         mAdapter.notifyDataSetChanged();
         mCredential.setSelectedAccountName(name);
-        Log.d("main_Name",name);
         getResultsFromApi();
     }
-    
-    private void addItemData() {
-        mDataSet.clear();
-        mAdapter.notifyDataSetChanged();
-        
-        mAdapter.notifyItemInserted(0);
-        mLayoutManager.scrollToPosition(0);
-    }
-    
+
     @Override
     public void onRefresh(FlyRefreshLayout view) {
         View child = mListView.getChildAt(0);
@@ -795,7 +621,11 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
             itemViewHolder.icon.setBackgroundDrawable(drawable);
             itemViewHolder.icon.setImageResource(data.icon);
             itemViewHolder.title.setText(data.title);
-            itemViewHolder.subTitle.setText((data.time).toString());
+            itemViewHolder.subTitle.setText(data.startTime);
+            itemViewHolder.walk.setImageResource(data.walk);
+            itemViewHolder.drive.setImageResource(data.drive);
+            itemViewHolder.bus.setImageResource(data.bus);
+            itemViewHolder.id.setText(data.id);
         }
         
         @Override
@@ -809,14 +639,21 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
         ImageView icon;
         TextView title;
         TextView subTitle;
-        
+        ImageView walk;
+        ImageView drive;
+        ImageView bus;
+        TextView id;
+
         public ItemViewHolder(View itemView) {
             super(itemView);
             icon = (ImageView) itemView.findViewById(R.id.icon);
             title = (TextView) itemView.findViewById(R.id.title);
             subTitle = (TextView) itemView.findViewById(R.id.subtitle);
+            walk = (ImageView) itemView.findViewById(R.id.walk);
+            drive = (ImageView) itemView.findViewById(R.id.drive);
+            bus = (ImageView) itemView.findViewById(R.id.bus);
+            id = (TextView) itemView.findViewById(R.id.item_id);
         }
-        
     }
     
     private void resetTrans(android.widget.LinearLayout l){
@@ -829,46 +666,49 @@ LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRef
         resetTrans((android.widget.LinearLayout) v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.walk_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
-        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
-        Log.d("click", "walk:" + textView.getText());
+        String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
+        helper.updateTransport(id, 0);
+        Log.d("click", "walk:" + id);
     }
     
     public void clickDrive(View v){
         resetTrans((android.widget.LinearLayout)v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.drive_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
-        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
-        Log.d("click", "Drive:" + textView.getText());
+        String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
+        helper.updateTransport(id, 1);
+        Log.d("click", "Drive:" + id);
     }
     
     public void clickBus(View v){
         resetTrans((android.widget.LinearLayout)v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.bus_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout) v.getParent().getParent();
-        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
-        Log.d("click", "Bus:" + textView.getText());
+        String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
+        helper.updateTransport(id, 2);
+        Log.d("click", "Bus:" + id);
     }
-}
 
-class http {
-    private HttpClient httpclient;
-    public http(){
-        httpclient=new DefaultHttpClient();
-    }
-    
-    public String getXML(String url) throws ClientProtocolException, IOException {
-        String xml = null;
-        HttpGet httpget = new HttpGet(url);
-        HttpResponse response = httpclient.execute(httpget);
-        if (response.getStatusLine().getStatusCode() == 200) {
-            HttpEntity entity = response.getEntity();
-            if (entity != null) {
-                xml = EntityUtils.toString(entity);
-            }
+    public void updateList(){
+        List<ItemData> events = helper.getEvents(selectedDay.toString());
+        for (int i = 0; i < events.size(); ++i) {
+            ItemData event = events.get(i);
+            mDataSet.add(event);
         }
-        return xml;
+        mAdapter.notifyItemInserted(0);
+        mLayoutManager.scrollToPosition(0);
+    }
+
+    public void updateTime(){
+
+    }
+
+    public DataBaseHelper getDataBaseHelper(){
+        return helper;
+    }
+
+    public GoogleAccountCredential getCredential(){
+        return mCredential;
     }
 }
-
-
 

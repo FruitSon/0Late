@@ -26,6 +26,7 @@ public class AutoUpdateService extends Service {
             @Override
             public void onFinish() {
                 //// TODO: 4/15/16 update event list
+                new RequestCalendar(Globals.GOOGLE_ACCOUNT_CREDENTIAL).execute();
                 start();
             }
         };

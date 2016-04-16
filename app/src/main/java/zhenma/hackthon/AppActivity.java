@@ -9,6 +9,7 @@ import android.view.animation.Animation;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
+
 public class AppActivity extends AppCompatActivity {
 
     @Override
@@ -16,6 +17,7 @@ public class AppActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         final View view = View.inflate(this, R.layout.activity_app, null);
         setContentView(view);
+
 
         FrameLayout d = (FrameLayout) findViewById(R.id.test);
         WebView wView = new WebView(this);
@@ -42,8 +44,5 @@ public class AppActivity extends AppCompatActivity {
             }
 
         });
-
-
-
     }
 }
