@@ -120,7 +120,8 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String[]>> {
 //            String dest = output.get(0)[1];
 //            String ori = mLastLocation.getLatitude() + "," + mLastLocation.getLongitude();
 //            String mode = "";
-//            Thread t = new myThread(ori, dest, mode);
+//            myThread t = new myThread(ori, dest, mode);
+//            t.setHandler();
 //            t.start();
 //            Log.d("main", "done");
 //        }

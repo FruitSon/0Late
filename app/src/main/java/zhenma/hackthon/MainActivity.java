@@ -108,22 +108,23 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     GoogleAccountCredential mCredential;
     private String name = "";
 
-    private Handler handler;
+    public Handler handler;
 
     static final int REQUEST_ACCOUNT_PICKER = 100;
     static final int REQUEST_AUTHORIZATION = 101;
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 102;
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 103;
-
+    
+    private static final String BUTTON_TEXT = "Call Google Calendar API";
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = {CalendarScopes.CALENDAR_READONLY};
     private GoogleApiClient mGoogleApiClientLoc;
     private Location mLastLocation;
-
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        
         setContentView(R.layout.time_list);
 
         mTextView = (TextView) findViewById(R.id.res);
@@ -131,17 +132,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (mBundle != null) {
             name = mBundle.getString("username");
         }
-
+        
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestEmail()
-                .build();
-
+        .requestEmail()
+        .build();
+        
         mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
-                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
-                .build();
-
+        .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
+        .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+        .build();
+        
         // Location
         mGoogleApiClientLoc = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
@@ -150,58 +151,60 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .build();
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
-                getApplicationContext(), Arrays.asList(SCOPES))
-                .setBackOff(new ExponentialBackOff());
+                                                          getApplicationContext(), Arrays.asList(SCOPES))
+        .setBackOff(new ExponentialBackOff());
         mCredential.setSelectedAccountName(name);
         initialUI();
-    }
 
+        startService(new Intent(this,MonitorService.class));
+    }
+    
     protected void onStart() {
         mGoogleApiClientLoc.connect();
         super.onStart();
     }
-
+    
     protected void onStop() {
         mGoogleApiClientLoc.disconnect();
         super.onStop();
     }
-
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
-
+    
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Go back to the main menu if the back key is pressed
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             new AlertDialog.Builder(this).setTitle("Do you want to quit?")
-                    .setNegativeButton("Cancel",
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog,
-                                                    int which) {
-                                }
-                            }).setPositiveButton("OK",
-                    new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog,
-                                            int whichButton) {
-                            android.os.Process.killProcess(android.os.Process.myPid());
-                        }
-                    }).show();
+            .setNegativeButton("Cancel",
+                               new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog,
+                                    int which) {
+                }
+            }).setPositiveButton("OK",
+                                 new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog,
+                                    int whichButton) {
+                    android.os.Process.killProcess(android.os.Process.myPid());
+                }
+            }).show();
             return true;
         }
         return super.onKeyDown(keyCode, event);
     }
-
+    
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
+        
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_signout) {
             Intent intent = new Intent(this, SignInActivity.class);
@@ -245,29 +248,29 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                             }
                     ).create().show();
         }
-
+        
         return super.onOptionsItemSelected(item);
     }
-
+    
     private void signOut() {
         Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-                new ResultCallback<Status>() {
-                    @Override
-                    public void onResult(Status status) {
-                        // [START_EXCLUDE]
-                        Log.d("logout", "Logout");
-                        // [END_EXCLUDE]
-                    }
-                });
+                                                                         new ResultCallback<Status>() {
+                                                                             @Override
+                                                                             public void onResult(Status status) {
+                                                                                 // [START_EXCLUDE]
+                                                                                 Log.d("logout", "Logout");
+                                                                                 // [END_EXCLUDE]
+                                                                             }
+                                                                         });
         mCredential.newChooseAccountIntent();
     }
-
+    
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed:" + connectionResult);
     }
-
-
+    
+    
     private void getResultsFromApi() {
         if (!isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
@@ -281,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 //            new MakeRequestTask(mCredential).execute();
         }
     }
-
+    
     /**
      * Attempts to set the account used with the API credentials. If an account
      * name was previously saved it will use that one; otherwise an account
@@ -294,8 +297,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      */
     @AfterPermissionGranted(REQUEST_PERMISSION_GET_ACCOUNTS)
     private void chooseAccount() {
-        if (EasyPermissions.hasPermissions(
-                this, Manifest.permission.GET_ACCOUNTS)) {
+        if (EasyPermissions.hasPermissions(this, Manifest.permission.GET_ACCOUNTS)) {
             String accountName = name;
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
@@ -303,19 +305,19 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             } else {
                 // Start a dialog from which the user can choose an account
                 startActivityForResult(
-                        mCredential.newChooseAccountIntent(),
-                        REQUEST_ACCOUNT_PICKER);
+                                       mCredential.newChooseAccountIntent(),
+                                       REQUEST_ACCOUNT_PICKER);
             }
         } else {
             // Request the GET_ACCOUNTS permission via a user dialog
             EasyPermissions.requestPermissions(
-                    this,
-                    "This app needs to access your Google account (via Contacts).",
-                    REQUEST_PERMISSION_GET_ACCOUNTS,
-                    Manifest.permission.GET_ACCOUNTS);
+                                               this,
+                                               "This app needs to access your Google account (via Contacts).",
+                                               REQUEST_PERMISSION_GET_ACCOUNTS,
+                                               Manifest.permission.GET_ACCOUNTS);
         }
     }
-
+    
     /**
      * Called when an activity launched here (specifically, AccountPicker
      * and authorization) exits, giving you the requestCode you started it with,
@@ -328,24 +330,23 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      */
     @Override
     protected void onActivityResult(
-            int requestCode, int resultCode, Intent data) {
+                                    int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         switch (requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
-
+                    
                 } else {
                     getResultsFromApi();
                 }
                 break;
             case REQUEST_ACCOUNT_PICKER:
                 if (resultCode == RESULT_OK && data != null &&
-                        data.getExtras() != null) {
-                    String accountName =
-                            data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+                    data.getExtras() != null) {
+                    String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
                     if (accountName != null) {
                         SharedPreferences settings =
-                                getPreferences(Context.MODE_PRIVATE);
+                        getPreferences(Context.MODE_PRIVATE);
                         SharedPreferences.Editor editor = settings.edit();
                         editor.putString(PREF_ACCOUNT_NAME, accountName);
                         editor.apply();
@@ -362,7 +363,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 break;
         }
     }
-
+    
     /**
      * Respond to requests for permissions at runtime for API 23 and above.
      * @param requestCode The request code passed in
@@ -377,9 +378,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         EasyPermissions.onRequestPermissionsResult(
-                requestCode, permissions, grantResults, this);
+                                                   requestCode, permissions, grantResults, this);
     }
-
+    
     /**
      * Callback for when a permission is granted using the EasyPermissions
      * library.
@@ -390,7 +391,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onPermissionsGranted(int requestCode, List<String> list) {
         // Do nothing.
     }
-
+    
     /**
      * Callback for when a permission is denied using the EasyPermissions
      * library.
@@ -401,18 +402,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onPermissionsDenied(int requestCode, List<String> list) {
         // Do nothing.
     }
-
+    
     /**
      * Checks whether the device currently has a network connection.
      * @return true if the device has a network connection, false otherwise.
      */
     private boolean isDeviceOnline() {
         ConnectivityManager connMgr =
-                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         return (networkInfo != null && networkInfo.isConnected());
     }
-
+    
     /**
      * Check that Google Play services APK is installed and up to date.
      * @return true if Google Play Services is available and up to
@@ -420,27 +421,27 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      */
     private boolean isGooglePlayServicesAvailable() {
         GoogleApiAvailability apiAvailability =
-                GoogleApiAvailability.getInstance();
+        GoogleApiAvailability.getInstance();
         final int connectionStatusCode =
-                apiAvailability.isGooglePlayServicesAvailable(this);
+        apiAvailability.isGooglePlayServicesAvailable(this);
         return connectionStatusCode == ConnectionResult.SUCCESS;
     }
-
+    
     /**
      * Attempt to resolve a missing, out-of-date, invalid or disabled Google
      * Play Services installation via a user dialog, if possible.
      */
     private void acquireGooglePlayServices() {
         GoogleApiAvailability apiAvailability =
-                GoogleApiAvailability.getInstance();
+        GoogleApiAvailability.getInstance();
         final int connectionStatusCode =
-                apiAvailability.isGooglePlayServicesAvailable(this);
+        apiAvailability.isGooglePlayServicesAvailable(this);
         if (apiAvailability.isUserResolvableError(connectionStatusCode)) {
             showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode);
         }
     }
-
-
+    
+    
     /**
      * Display an error dialog showing that Google Play Services is missing
      * or out of date.
@@ -448,66 +449,65 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      *     Google Play Services on this device.
      */
     void showGooglePlayServicesAvailabilityErrorDialog(
-            final int connectionStatusCode) {
+                                                       final int connectionStatusCode) {
         GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
         Dialog dialog = apiAvailability.getErrorDialog(
-                MainActivity.this,
-                connectionStatusCode,
-                REQUEST_GOOGLE_PLAY_SERVICES);
+                                                       MainActivity.this,
+                                                       connectionStatusCode,
+                                                       REQUEST_GOOGLE_PLAY_SERVICES);
         dialog.show();
     }
-
+    
     @Override
     public void onConnected(Bundle bundle) {
         Log.d("onConnected", "Yes");
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.d("permission denied","true");
             return;
         }
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                mGoogleApiClientLoc);
-
+                                                                          mGoogleApiClientLoc);
+        
         if (mLastLocation != null) {
-            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
-            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
+//            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
+//            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
         }else {
-            Log.d("mLastLocation==null","true");
+//            Log.d("mLastLocation==null","true");
         }
     }
-
+    
     @Override
     public void onConnectionSuspended(int i) {
-
+        
     }
-
+    
     @Override
     public void onLocationChanged(Location location) {
-
+        
     }
-
+    
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
-
+        
     }
-
+    
     @Override
     public void onProviderEnabled(String provider) {
-
+        
     }
-
+    
     @Override
     public void onProviderDisabled(String provider) {
-
+        
     }
 
     public Date getSelectedDay() {
         return this.selectedDay;
     }
+
     /**
      * An asynchronous task that handles the Google Calendar API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
      */
-
     class myHandler extends Handler{
         @Override
         public void handleMessage(Message msg) {
@@ -516,9 +516,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             try {
                 DocumentBuilder db=factory.newDocumentBuilder();
                 Document doc=db.parse(new ByteArrayInputStream(xml.getBytes()));
-
+                
                 Element root=doc.getDocumentElement();
-
+                
                 NodeList nodelist = root.getElementsByTagName("duration");
                 String res = "Default: 1 Hour";
                 if (nodelist != null) {
@@ -532,53 +532,26 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 e.printStackTrace();
             }
         }
-
+        
     }
-
-//    class myThread extends Thread{
-//        private String start, end, mode;
-//        public myThread(String start, String end, String mode) {
-//            this.start = start;
-//            this.end = end;
-//            this.mode = mode;
-//        }
-//        public void run(){
-//            UtilHelper httpclient = new UtilHelper();
-//            String xml;
-//            String n_start = start.replace(" ", "+");
-//            String n_end = end.replace(" ", "+");
-//            System.out.println(n_start + " " + n_end);
-//            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
-//            while(true){
-//                try {
-//                    xml = httpclient.getXML(url);
-//                    Message msg = handler.obtainMessage();
-//                    msg.obj = xml;
-//                    handler.sendMessage(msg);
-//                    Thread.sleep(300*1000);
-//                } catch (Exception e1) {
-//                    e1.printStackTrace();
-//                }
-//            }
-//        }
-//    }
 
     private void initialUI(){
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
-
+        
         mFlylayout = (FlyRefreshLayout) findViewById(R.id.fly_layout);
-        mFlylayout.setOnPullRefreshListener(this);
 
+        mFlylayout.setOnPullRefreshListener(this);
+        
         mListView = (RecyclerView) findViewById(R.id.list);
         mLayoutManager = new LinearLayoutManager(this);
         mListView.setLayoutManager(mLayoutManager);
         mAdapter = new ItemAdapter(this);
-
+        
         mListView.setAdapter(mAdapter);
         mListView.setItemAnimator(new TimeListItem());
-
+        
         View actionButton = mFlylayout.getHeaderActionButton();
         if (actionButton != null) {
             actionButton.setOnClickListener(new View.OnClickListener() {
@@ -590,7 +563,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
         freshData();
     }
-
+    
     private void freshData() {
         Log.d("main","fresh");
         mDataSet.clear();
@@ -599,14 +572,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         Log.d("main_Name",name);
         getResultsFromApi();
     }
-
     @Override
     public void onRefresh(FlyRefreshLayout view) {
         View child = mListView.getChildAt(0);
         if (child != null) {
             bounceAnimateView(child.findViewById(R.id.icon));
         }
-
+        
         mHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -614,39 +586,39 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         }, 2000);
     }
-
+    
     private void bounceAnimateView(View view) {
         if (view == null) {
             return;
         }
-
+        
         Animator swing = ObjectAnimator.ofFloat(view, "rotationX", 0, 30, -20, 0);
         swing.setDuration(400);
         swing.setInterpolator(new AccelerateInterpolator());
         swing.start();
     }
-
+    
     @Override
     public void onRefreshAnimationEnd(FlyRefreshLayout view) {
         freshData();
     }
-
+    
     private class ItemAdapter extends RecyclerView.Adapter<ItemViewHolder> {
-
+        
         private LayoutInflater mInflater;
         private DateFormat dateFormat;
-
+        
         public ItemAdapter(Context context) {
             mInflater = LayoutInflater.from(context);
             dateFormat = SimpleDateFormat.getDateInstance(DateFormat.DEFAULT, Locale.ENGLISH);
         }
-
+        
         @Override
         public ItemViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
             View view = mInflater.inflate(R.layout.time_list_item, viewGroup, false);
             return new ItemViewHolder(view);
         }
-
+        
         @Override
         public void onBindViewHolder(ItemViewHolder itemViewHolder, int i) {
             final ItemData data = mDataSet.get(i);
@@ -657,34 +629,34 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             itemViewHolder.title.setText(data.title);
             itemViewHolder.subTitle.setText((data.time).toString());
         }
-
+        
         @Override
         public int getItemCount() {
             return mDataSet.size();
         }
     }
-
+    
     private static class ItemViewHolder extends RecyclerView.ViewHolder {
-
+        
         ImageView icon;
         TextView title;
         TextView subTitle;
-
+        
         public ItemViewHolder(View itemView) {
             super(itemView);
             icon = (ImageView) itemView.findViewById(R.id.icon);
             title = (TextView) itemView.findViewById(R.id.title);
             subTitle = (TextView) itemView.findViewById(R.id.subtitle);
         }
-
+        
     }
-
+    
     private void resetTrans(android.widget.LinearLayout l){
         ((android.widget.ImageView)l.getChildAt(0)).setImageResource(R.mipmap.walk_g);
         ((android.widget.ImageView)l.getChildAt(1)).setImageResource(R.mipmap.drive_g);
         ((android.widget.ImageView)l.getChildAt(2)).setImageResource(R.mipmap.bus_g);
     }
-
+    
     public void clickWalk(View v){
         resetTrans((android.widget.LinearLayout) v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.walk_c);
@@ -692,7 +664,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
         Log.d("click", "walk:" + textView.getText());
     }
-
+    
     public void clickDrive(View v){
         resetTrans((android.widget.LinearLayout)v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.drive_c);
@@ -700,7 +672,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
         Log.d("click", "Drive:" + textView.getText());
     }
-
+    
     public void clickBus(View v){
         resetTrans((android.widget.LinearLayout)v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.bus_c);
