@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -93,9 +94,8 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     //UI
     private FlyRefreshLayout mFlylayout;
     private RecyclerView mListView;
-
     private ItemAdapter mAdapter;
-
+    private DataBaseHelper helper;
     private ArrayList<ItemData> mDataSet = new ArrayList<>();
     private Handler mHandler = new Handler();
     private LinearLayoutManager mLayoutManager;
@@ -103,7 +103,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     //data
     private static final String TAG = "SignOutActivity";
     private GoogleApiClient mGoogleApiClient;
-
     private long msPerDay = 86400000;
 
     //calendar
@@ -126,17 +125,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.time_list);
-//        mOutputText = (TextView)findViewById(R.id.res);
-//        mOutputText.setPadding(16, 16, 16, 16);
-//        mOutputText.setVerticalScrollBarEnabled(true);
-//        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-//        mOutputText.setText(
-//                "Click the \'" + BUTTON_TEXT + "\' button to test the API.");
-//
-//        mProgress = new ProgressDialog(this);
-//        mProgress.setMessage("Calling Google Calendar API ...");
-//
-//        mTextView = (TextView) findViewById(R.id.username);
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
             name = mBundle.getString("username");
@@ -185,10 +173,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                                         DateTime datetime = new DateTime(selectedDay.getTime());
                                         System.out.println(datetime);
                                         dialogInterface.dismiss();
-////                                        getResultsFromApi();
-//                                        startActivityForResult(
-//                                                mCredential.newChooseAccountIntent(),
-//                                                REQUEST_ACCOUNT_PICKER);
                                         mCredential.setSelectedAccountName(name);
                                         freshData();
                                     }
@@ -202,6 +186,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                 getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
 //        mCredential.setSelectedAccountName(name);
+        helper = new DataBaseHelper(getApplicationContext());
         initialUI();
     }
     
@@ -265,7 +250,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                     @Override
                     public void onResult(Status status) {
                         // [START_EXCLUDE]
-                        Log.d("logout", "Logout");
                         // [END_EXCLUDE]
                     }
                 });
@@ -491,7 +475,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             try {
                 return getDataFromApi();
             } catch (Exception e) {
-                Log.d("main",e.toString());
                 mLastError = e;
                 cancel(true);
                 return null;
@@ -517,12 +500,13 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                     .execute();
             List<Event> items = events.getItems();
 
+            List<String> IDS = new ArrayList<>();
             for (Event event : items) {
-                Log.d("main","start for");
                 DateTime startTime = event.getStart().getDateTime();
                 String eventName = event.getSummary();
-                Log.d("main", eventName);
-                mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, eventName, startTime));
+                String eventID = event.getId();
+                IDS.add(eventID);
+                helper.checkAndUpdate(eventID, selectedDay.toString(), eventName, startTime.toString());
                 if (startTime == null) {
                     // All-day events don't have start times, so just use
                     // the start date.
@@ -531,6 +515,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                 eventStrings.add(
                         String.format("%s (%s)", event.getSummary(), startTime));
             }
+            helper.deleteRemoved(IDS, selectedDay.toString());
             return eventStrings;
         }
 
@@ -541,9 +526,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
         @Override
         protected void onPostExecute(List<String> output) {
-            Log.d("main","done");
-            mAdapter.notifyItemInserted(0);
-            mLayoutManager.scrollToPosition(0);
+            updateList();
         }
 
         @Override
@@ -572,17 +555,12 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         getSupportActionBar().setDisplayShowTitleEnabled(false);
 
         mFlylayout = (FlyRefreshLayout) findViewById(R.id.fly_layout);
-
         mFlylayout.setOnPullRefreshListener(this);
-
         mListView = (RecyclerView) findViewById(R.id.list);
-
         mLayoutManager = new LinearLayoutManager(this);
         mListView.setLayoutManager(mLayoutManager);
         mAdapter = new ItemAdapter(this);
-
         mListView.setAdapter(mAdapter);
-
         mListView.setItemAnimator(new TimeListItem());
 
         View actionButton = mFlylayout.getHeaderActionButton();
@@ -598,30 +576,11 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     }
 
     private void freshData() {
-//        mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, "Meeting Minutes", new Date(2014 - 1900, 2, 9)));
-//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Favorites Photos", new Date(2014 - 1900, 1, 3)));
-//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Photos", new Date(2014 - 1900, 0, 9)));
-        Log.d("main","fresh");
         mDataSet.clear();
         mAdapter.notifyDataSetChanged();
         mCredential.setSelectedAccountName(name);
-        Log.d("main_Name",name);
         getResultsFromApi();
     }
-
-    private void addItemData() {
-        mDataSet.clear();
-        mAdapter.notifyDataSetChanged();
-
-        mAdapter.notifyItemInserted(0);
-        mLayoutManager.scrollToPosition(0);
-    }
-
-//    @Override
-//    public boolean onCreateOptionsMenu(Menu menu) {
-//        getMenuInflater().inflate(R.menu.menu_main, menu);
-//        return true;
-//    }
 
     @Override
     public void onRefresh(FlyRefreshLayout view) {
@@ -678,7 +637,11 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             itemViewHolder.icon.setBackgroundDrawable(drawable);
             itemViewHolder.icon.setImageResource(data.icon);
             itemViewHolder.title.setText(data.title);
-            itemViewHolder.subTitle.setText((data.time).toString());
+            itemViewHolder.subTitle.setText(data.startTime);
+            itemViewHolder.walk.setImageResource(data.walk);
+            itemViewHolder.drive.setImageResource(data.drive);
+            itemViewHolder.bus.setImageResource(data.bus);
+            itemViewHolder.id.setText(data.id);
         }
 
         @Override
@@ -692,14 +655,20 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         ImageView icon;
         TextView title;
         TextView subTitle;
-
+        ImageView walk;
+        ImageView drive;
+        ImageView bus;
+        TextView id;
         public ItemViewHolder(View itemView) {
             super(itemView);
             icon = (ImageView) itemView.findViewById(R.id.icon);
             title = (TextView) itemView.findViewById(R.id.title);
             subTitle = (TextView) itemView.findViewById(R.id.subtitle);
+            walk = (ImageView) itemView.findViewById(R.id.walk);
+            drive = (ImageView) itemView.findViewById(R.id.drive);
+            bus = (ImageView) itemView.findViewById(R.id.bus);
+            id = (TextView) itemView.findViewById(R.id.item_id);
         }
-
     }
 
     private void resetTrans(android.widget.LinearLayout l){
@@ -712,23 +681,40 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         resetTrans((android.widget.LinearLayout) v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.walk_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
-        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
-        Log.d("click", "walk:" + textView.getText());
+        String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
+        helper.updateTransport(id, 0);
+        Log.d("click", "walk:" + id);
     }
 
     public void clickDrive(View v){
         resetTrans((android.widget.LinearLayout)v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.drive_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
-        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
-        Log.d("click", "Drive:" + textView.getText());
+        String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
+        helper.updateTransport(id, 1);
+        Log.d("click", "Drive:" + id);
     }
 
     public void clickBus(View v){
         resetTrans((android.widget.LinearLayout)v.getParent());
         ((android.widget.ImageView)v).setImageResource(R.mipmap.bus_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout) v.getParent().getParent();
-        android.widget.TextView textView= (android.widget.TextView)l.getChildAt(1);
-        Log.d("click", "Bus:" + textView.getText());
+        String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
+        helper.updateTransport(id, 2);
+        Log.d("click", "Bus:" + id);
+    }
+
+    public void updateList(){
+        List<ItemData> events = helper.getEvents(selectedDay.toString());
+        for (int i = 0; i < events.size(); ++i) {
+            ItemData event = events.get(i);
+            mDataSet.add(event);
+        }
+        mAdapter.notifyItemInserted(0);
+        mLayoutManager.scrollToPosition(0);
+    }
+
+    public void updateTime(){
+
     }
 }

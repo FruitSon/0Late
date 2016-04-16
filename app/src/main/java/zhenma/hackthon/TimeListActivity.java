@@ -48,7 +48,6 @@ public class TimeListActivity extends AppCompatActivity implements FlyRefreshLay
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        initDataSet();
         setContentView(R.layout.time_list);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -165,7 +164,7 @@ public class TimeListActivity extends AppCompatActivity implements FlyRefreshLay
             itemViewHolder.icon.setBackgroundDrawable(drawable);
             itemViewHolder.icon.setImageResource(data.icon);
             itemViewHolder.title.setText(data.title);
-            itemViewHolder.subTitle.setText(dateFormat.format(data.time));
+            itemViewHolder.subTitle.setText(data.startTime);
         }
 
         @Override
