@@ -5,7 +5,6 @@ import android.accounts.AccountManager;
 import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -23,7 +22,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -82,7 +80,6 @@ import java.util.Locale;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
@@ -93,25 +90,25 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     //UI
     private FlyRefreshLayout mFlylayout;
     private RecyclerView mListView;
-    private ItemAdapter mAdapter;
-    private ArrayList<ItemData> mDataSet = new ArrayList<>();
+    public ItemAdapter mAdapter;
+    public ArrayList<ItemData> mDataSet = new ArrayList<>();
     private Handler mHandler = new Handler();
-    private LinearLayoutManager mLayoutManager;
+    public LinearLayoutManager mLayoutManager;
+    public TextView mTextView;
 
     //data
     private static final String TAG = "SignOut";
     private GoogleApiClient mGoogleApiClient;
-    private TextView mTextView;
-    private Handler handler;
 
     //calendar
-    private Date selectedDay = Calendar.getInstance().getTime();
+    public Date selectedDay = Calendar.getInstance().getTime();
     private long msPerDay = 86400000;
     private int today = Calendar.getInstance().get(Calendar.DATE);
 
     GoogleAccountCredential mCredential;
-    ProgressDialog mProgress;
     private String name = "";
+
+    private Handler handler;
 
     static final int REQUEST_ACCOUNT_PICKER = 100;
     static final int REQUEST_AUTHORIZATION = 101;
@@ -128,8 +125,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.time_list);
-        mTextView = (TextView) findViewById(R.id.res);
 
+        mTextView = (TextView) findViewById(R.id.res);
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
             name = mBundle.getString("username");
@@ -151,42 +148,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                //calendar,swipe horizontally
-                final MaterialCalendarView dialogView = (MaterialCalendarView) getLayoutInflater()
-                        .inflate(R.layout.horizontal_calendar, null, false);
-
-
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Pick the time")
-                        .setView(dialogView)
-                        .setNeutralButton("Cancel",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        dialogInterface.dismiss();
-                                    }
-                                }
-                        )
-                        .setPositiveButton("Confirm",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int which) {
-                                        selectedDay = dialogView.getSelectedDate().getDate();
-                                        dialogInterface.dismiss();
-                                        mCredential.setSelectedAccountName(name);
-                                        freshData();
-                                    }
-                                }
-                        ).create().show();
-            }
-        });
-
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
                 getApplicationContext(), Arrays.asList(SCOPES))
@@ -253,6 +214,36 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
             startActivity(intent);
             return true;
+        }else if (id == R.id.action_calendar){
+            //calendar,swipe horizontally
+            final MaterialCalendarView dialogView = (MaterialCalendarView) getLayoutInflater()
+                    .inflate(R.layout.horizontal_calendar, null, false);
+
+
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Pick the time")
+                    .setView(dialogView)
+                    .setNeutralButton("Cancel",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    dialogInterface.dismiss();
+                                }
+                            }
+                    )
+                    .setPositiveButton("Confirm",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int which) {
+                                    selectedDay = dialogView.getSelectedDate().getDate();
+                                    DateTime datetime = new DateTime(selectedDay.getTime());
+//                                    System.out.println(datetime);
+                                    dialogInterface.dismiss();
+                                    mCredential.setSelectedAccountName(name);
+                                    freshData();
+                                }
+                            }
+                    ).create().show();
         }
 
         return super.onOptionsItemSelected(item);
@@ -286,7 +277,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else if (!isDeviceOnline()) {
             Toast.makeText(this, "No network connection available.", Toast.LENGTH_SHORT).show();
         } else {
-            new MakeRequestTask(mCredential).execute();
+            new RequestCalendar(mCredential, this).execute();
+//            new MakeRequestTask(mCredential).execute();
         }
     }
 
@@ -508,130 +500,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     }
 
+    public Date getSelectedDay() {
+        return this.selectedDay;
+    }
     /**
      * An asynchronous task that handles the Google Calendar API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
      */
-    private class MakeRequestTask extends AsyncTask<Void, Void, List<String[]>> {
-        private com.google.api.services.calendar.Calendar mService = null;
-        private Exception mLastError = null;
-
-        public MakeRequestTask(GoogleAccountCredential credential) {
-            HttpTransport transport = AndroidHttp.newCompatibleTransport();
-            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-            mService = new com.google.api.services.calendar.Calendar.Builder(
-                    transport, jsonFactory, credential)
-                    .setApplicationName("0Late")
-                    .build();
-        }
-
-        /**
-         * Background task to call Google Calendar API.
-         * @param params no parameters needed for this task.
-         */
-        @Override
-        protected List<String[]> doInBackground(Void... params) {
-            try {
-                return getDataFromApi();
-            } catch (Exception e) {
-                Log.d("main",e.toString());
-                mLastError = e;
-                cancel(true);
-                return null;
-            }
-        }
-
-        /**
-         * Fetch a list of the next 10 events from the primary calendar.
-         * @return List of Strings describing returned events.
-         * @throws IOException
-         */
-        private List<String[]> getDataFromApi() throws IOException {
-            // List the next 10 events from the primary calendar.
-            DateTime now = new DateTime(System.currentTimeMillis());
-            List<String[]> eventStrings = new ArrayList<>();
-            Events events;
-            if (selectedDay.getDate() != today) {
-                events = mService.events().list("primary")
-                        .setMaxResults(10)
-                        .setTimeMin(new DateTime(selectedDay.getTime()))
-                        .setTimeMax(new DateTime(selectedDay.getTime() + msPerDay))
-                        .setOrderBy("startTime")
-                        .setSingleEvents(true)
-                        .execute();
-            }
-            else {
-                events = mService.events().list("primary")
-                        .setMaxResults(10)
-                        .setTimeMin(now)
-                        .setTimeMax(new DateTime(selectedDay.getTime() + msPerDay))
-                        .setOrderBy("startTime")
-                        .setSingleEvents(true)
-                        .execute();
-            }
-            List<Event> items = events.getItems();
-
-            for (Event event : items) {
-                DateTime startTime = event.getStart().getDateTime();
-                DateTime endTime = event.getEnd().getDateTime();
-                String eventName = event.getSummary();
-                String location = event.getLocation();
-                Log.d("main", eventName);
-                String s_time[] = startTime.toString().split("T");
-                String format_time = s_time[0] + " " + s_time[1].substring(0, 5);
-                mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, eventName, format_time));
-                String []res = new String[4];
-                res[0] = eventName;
-                res[1] = location;
-                res[2] = startTime.toString();
-                res[3] = endTime.toString();
-                eventStrings.add(res);
-            }
-            return eventStrings;
-        }
-
-
-        @Override
-        protected void onPreExecute() {
-        }
-
-        @Override
-        protected void onPostExecute(List<String[]> output) {
-            mAdapter.notifyItemInserted(0);
-            mLayoutManager.scrollToPosition(0);
-            handler = new myHandler();
-            if (output.size() > 0) {
-                String dest = output.get(0)[1];
-                String ori = mLastLocation.getLatitude()+","+mLastLocation.getLongitude();
-                String mode = "";
-                Thread t = new myThread(ori, dest, mode);
-                t.start();
-                Log.d("main","done");
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            if (mLastError != null) {
-                if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
-                    showGooglePlayServicesAvailabilityErrorDialog(
-                            ((GooglePlayServicesAvailabilityIOException) mLastError)
-                                    .getConnectionStatusCode());
-                } else if (mLastError instanceof UserRecoverableAuthIOException) {
-                    startActivityForResult(
-                            ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                            MainActivity.REQUEST_AUTHORIZATION);
-                } else {
-
-                }
-            } else {
-
-            }
-        }
-    }
 
     class myHandler extends Handler{
-
         @Override
         public void handleMessage(Message msg) {
             String xml=(String)msg.obj;
@@ -643,17 +520,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Element root=doc.getDocumentElement();
 
                 NodeList nodelist = root.getElementsByTagName("duration");
-                Element element = (Element)nodelist.item(0);
-                String res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
+                String res = "Default: 1 Hour";
+                if (nodelist != null) {
+                    Element element = (Element)nodelist.item(0);
+                    res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
+                }
                 mTextView.setText(res);
                 System.out.println("Get the result");
 
-                //start service
-                Intent intent = new Intent(getApplicationContext(), NotifyService.class);
-                Bundle mbundle = new Bundle();
-                mbundle.putString("result", res);
-                intent.putExtras(mbundle);
-                startService(intent);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -661,33 +535,33 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     }
 
-    class myThread extends Thread{
-        private String start, end, mode;
-        public myThread(String start, String end, String mode) {
-            this.start = start;
-            this.end = end;
-            this.mode = mode;
-        }
-        public void run(){
-            UtilHelper httpclient = new UtilHelper();
-            String xml;
-            String n_start = start.replace(" ", "+");
-            String n_end = end.replace(" ", "+");
-            System.out.println(n_start + " " + n_end);
-            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
-            while(true){
-                try {
-                    xml = httpclient.getXML(url);
-                    Message msg = handler.obtainMessage();
-                    msg.obj = xml;
-                    handler.sendMessage(msg);
-                    Thread.sleep(300*1000);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
-            }
-        }
-    }
+//    class myThread extends Thread{
+//        private String start, end, mode;
+//        public myThread(String start, String end, String mode) {
+//            this.start = start;
+//            this.end = end;
+//            this.mode = mode;
+//        }
+//        public void run(){
+//            UtilHelper httpclient = new UtilHelper();
+//            String xml;
+//            String n_start = start.replace(" ", "+");
+//            String n_end = end.replace(" ", "+");
+//            System.out.println(n_start + " " + n_end);
+//            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
+//            while(true){
+//                try {
+//                    xml = httpclient.getXML(url);
+//                    Message msg = handler.obtainMessage();
+//                    msg.obj = xml;
+//                    handler.sendMessage(msg);
+//                    Thread.sleep(300*1000);
+//                } catch (Exception e1) {
+//                    e1.printStackTrace();
+//                }
+//            }
+//        }
+//    }
 
     private void initialUI(){
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
