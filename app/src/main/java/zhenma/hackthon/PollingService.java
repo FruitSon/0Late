@@ -1,20 +1,40 @@
 package zhenma.hackthon;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
+import android.support.v4.app.ActivityCompat;
 
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import java.io.ByteArrayInputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 public class PollingService extends Service {
+
+    String res = "-1";
+
     public PollingService() {
     }
 
@@ -37,7 +57,7 @@ public class PollingService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         System.out.println("polling service is started");
-        System.out.println("the xxx time for comparsions:"+(count++));
+        System.out.println("the xxx time for comparsions:" + (count++));
         compareTime();
         return super.onStartCommand(intent, flags, startId);
     }
@@ -47,12 +67,12 @@ public class PollingService extends Service {
         super.onDestroy();
     }
 
-    public void compareTime(){
+    public void compareTime() {
         //estimate time
         SharedPreferences sp3 = getSharedPreferences("latestEvent", MODE_PRIVATE);
         String temp = sp3.getString("1Time", "");
 
-        String tempTime = temp.substring(0, 10) + " "+temp.substring(11, 19);
+        String tempTime = temp.substring(0, 10) + " " + temp.substring(11, 19);
 
         Date currentTime = Calendar.getInstance().getTime();
         Date eventTime = Calendar.getInstance().getTime();
@@ -71,21 +91,18 @@ public class PollingService extends Service {
         long travelTime = estimateTimeOnRoad();
 
         //test
-        System.out.println("TEST: travel time:" +travelTime);
-        System.out.println("TEST: remain time:" +remainTime);
+        System.out.println("TEST: travel time:" + travelTime);
+        System.out.println("TEST: remain time:" + remainTime);
 
 
-        if(travelTime >= remainTime){
-            //get Event title
-            SharedPreferences sp2 = getSharedPreferences("latestEvent", MODE_PRIVATE);
-            String event = sp2.getString("1Event","");
+        if (travelTime >= remainTime) {
 
             //send notification
             System.out.println("alerrrrrrrrrrrrrrrrrrrrrrrt! tessssssssst! ");
-            Intent notify = new Intent(this,NotifyService.class);
+            Intent notify = new Intent(this, NotifyService.class);
             Bundle notificationData = new Bundle();
-            notificationData.putString("event", event);
-            notificationData.putLong("time", travelTime);
+            notificationData.putString("event", Globals.FIRST_EVENT);
+            notificationData.putLong("time", remainTime);
             notify.putExtras(notificationData);
 
             startService(notify);
@@ -97,16 +114,55 @@ public class PollingService extends Service {
                     PendingIntent.FLAG_CANCEL_CURRENT);
             alarmMgr.cancel(pi2);
 
-            // TODO: 4/15/16 update event list, event in sharedpreference
 
             stopSelf();
         }
     }
 
-    private long estimateTimeOnRoad(){
-        long ET = 10;
+    private String estimateTimeOnRoad() {
+        Location curLocation;
 
-        return ET;
+        GoogleApiClient mGoogleApiClientLoc2 = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .build();
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return 0;
+        }
+        curLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc2);
+
+        //Thread for google map
+        myThread mThread = new myThread(curLocation.getLatitude()+","+curLocation.getLongitude(),
+                Globals.FIRST_LOCATION,new DataBaseHelper(getApplicationContext()).getTransport());
+        Handler handler = new h();
+        mThread.setHandler(handler);
+        mThread.start();
+        return res;
+    }
+
+    class h extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            String xml=(String)msg.obj;
+            DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
+            try {
+                DocumentBuilder db=factory.newDocumentBuilder();
+                Document doc=db.parse(new ByteArrayInputStream(xml.getBytes()));
+
+                Element root=doc.getDocumentElement();
+
+                NodeList nodelist = root.getElementsByTagName("duration");
+                if (nodelist != null) {
+                    Element element = (Element)nodelist.item(0);
+                    res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
+                }
+                System.out.println("Get the result");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
 }

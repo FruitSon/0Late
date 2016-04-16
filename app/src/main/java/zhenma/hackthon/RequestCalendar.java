@@ -1,9 +1,5 @@
 package zhenma.hackthon;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.graphics.Color;
-
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -20,9 +16,8 @@ import com.google.api.services.calendar.model.Events;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
-
 import java.util.Date;
+import java.util.List;
 
 /**
  * Created by dnalwqer on 4/16/16.
@@ -44,7 +39,17 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
                 .setApplicationName("0Late")
                 .build();
         this.activity = activity;
-        this.flag = flag;
+        this.flag = 0;
+    }
+
+    public RequestCalendar(GoogleAccountCredential credential) {
+        HttpTransport transport = AndroidHttp.newCompatibleTransport();
+        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+        mService = new com.google.api.services.calendar.Calendar.Builder(
+                transport, jsonFactory, credential)
+                .setApplicationName("0Late")
+                .build();
+        this.flag = 1;
     }
 
     /**
@@ -108,14 +113,14 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
             activity.getDataBaseHelper().checkAndUpdate(event.getId(),activity.getSelectedDay().toString(),eventName,startTime.toString());
             eventStrings.add(event.getId());
         }
+
         activity.getDataBaseHelper().deleteRemoved(eventStrings,activity.getSelectedDay().toString());
         if(flag == 1){
-            SharedPreferences sp = activity.getSharedPreferences("latestEvent", Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = sp.edit();
             if(items.size()>0) {
-                editor.putString("1Time", items.get(0).getStart().getDateTime().toStringRfc3339());
-                editor.putString("1Event", items.get(0).getSummary());
-                editor.commit();
+                Globals.FIRST_TIME = items.get(0).getStart().getDateTime().toStringRfc3339();
+                Globals.FIRST_EVENT = items.get(0).getSummary();
+                Globals.FIRST_LOCATION = items.get(0).getLocation();
+                Globals.FIRST_ID = items.get(0).getId();
             }
             System.out.println("firstEventTime:" + items.get(0).getStart().getDateTime().toStringRfc3339());
         }

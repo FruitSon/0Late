@@ -26,10 +26,12 @@ public class MonitorService extends Service {
     }
 
     @Override
-    public void onCreate() {
+    public int onStartCommand(Intent intent, int flags, int startId) {
         super.onCreate();
         System.out.println("monitor service start");
+        new RequestCalendar(Globals.GOOGLE_ACCOUNT_CREDENTIAL).execute();
         autoCheck();
+        return super.onStartCommand(intent, flags, startId);
     }
 
     public void autoCheck(){
@@ -71,6 +73,7 @@ public class MonitorService extends Service {
                 }
                 else{
                     //// TODO: 4/15/16 update event list
+
                     deltaTime = calculateWaitingTime(temp);
                 }
 

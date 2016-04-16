@@ -148,9 +148,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         initialUI();
 
+        Globals.GOOGLE_ACCOUNT_CREDENTIAL = mCredential;
+        Globals.GOOGLE_API_CLIENT = mGoogleApiClientLoc;
 
-
-        startService(new Intent(this,MonitorService.class));
+        startService(new Intent(this, MonitorService.class));
     }
     
     protected void onStart() {
@@ -706,6 +707,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     public DataBaseHelper getDataBaseHelper(){
         return helper;
+    }
+
+    public GoogleAccountCredential getCredential(){
+        return mCredential;
     }
 }
 
