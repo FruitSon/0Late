@@ -93,7 +93,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             cursor.moveToFirst();
             while (!cursor.isAfterLast()) {
                 ItemData thisEvent = new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp,
-                        cursor.getString(2), cursor.getString(1), R.mipmap.walk_g,
+                        cursor.getString(2), cursor.getString(3), R.mipmap.walk_g,
                         R.mipmap.drive_g, R.mipmap.bus_g, cursor.getString(0), Date.toString());
                 switch (cursor.getInt(4)){
                     case 0:

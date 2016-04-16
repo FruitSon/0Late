@@ -10,14 +10,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
 import android.location.Location;
 import android.location.LocationListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -48,18 +46,10 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationServices;
-import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
-import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
-import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.DateTime;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.calendar.CalendarScopes;
-import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.Events;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.race604.flyrefresh.FlyRefreshLayout;
 
@@ -68,7 +58,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -80,6 +69,7 @@ import java.util.Locale;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
@@ -156,9 +146,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         .setBackOff(new ExponentialBackOff());
         mCredential.setSelectedAccountName(name);
 
+        mLastLocation = new Location("");
+        mLastLocation.setLatitude(1);
+        mLastLocation.setLongitude(1);
         initialUI();
 
-        startService(new Intent(this,MonitorService.class));
+        Globals.GOOGLE_ACCOUNT_CREDENTIAL = mCredential;
+        Globals.GOOGLE_API_CLIENT = mGoogleApiClientLoc;
+
+//        startService(new Intent(this, MonitorService.class));
     }
     
     protected void onStart() {
@@ -281,7 +277,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else if (!isDeviceOnline()) {
             Toast.makeText(this, "No network connection available.", Toast.LENGTH_SHORT).show();
         } else {
-            new RequestCalendar(mCredential, this, 0).execute();
+            new RequestCalendar(mCredential, this).execute();
         }
     }
     
@@ -474,10 +470,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 //            Log.d("mLastLocation==null","true");
         }
         //Thread for google map
-        mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), "Sachem Circle", "");
-        handler = new myHandler();
-        mThread.setHandler(handler);
-        mThread.start();
+
+        freshData();
     }
     
     @Override
@@ -517,6 +511,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         @Override
         public void handleMessage(Message msg) {
             String xml=(String)msg.obj;
+            Log.d("message",xml);
             DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
             try {
                 DocumentBuilder db=factory.newDocumentBuilder();
@@ -526,8 +521,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 
                 NodeList nodelist = root.getElementsByTagName("duration");
                 String res = "Default: 1 Hour";
-                if (nodelist != null) {
-                    Element element = (Element)nodelist.item(0);
+                Element element = (Element)nodelist.item(0);
+                if (element != null) {
                     res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
                 }
                 mTextView.setText(res);
@@ -565,21 +560,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
             });
         }
-        freshData();
     }
     
     private void freshData() {
-        mDataSet.clear();
-        mAdapter.notifyDataSetChanged();
-        mCredential.setSelectedAccountName(name);
-
-        new RequestCalendar(mCredential, this, 1).execute();
-        if(mThread != null && mThread.isAlive()){
-            mThread.interrupt();
-            mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), "New York", "");
-            mThread.setHandler(handler);
-            mThread.start();
-        }
+        new RequestCalendar(mCredential).execute();
         getResultsFromApi();
     }
 
@@ -602,7 +586,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (view == null) {
             return;
         }
-        
         Animator swing = ObjectAnimator.ofFloat(view, "rotationX", 0, 30, -20, 0);
         swing.setDuration(400);
         swing.setInterpolator(new AccelerateInterpolator());
@@ -674,40 +657,62 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
     
     private void resetTrans(android.widget.LinearLayout l){
+ //     if(selectedDay.toString().equals(Calendar.getInstance().getTime().toString())){
+        if(mThread != null && mThread.isAlive()) {
+            mThread.interrupt();
+            Log.d("reset","###");
+        }
+        mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), Globals.FIRST_LOCATION, helper.getTransport(Globals.FIRST_ID));
+        handler = new myHandler();
+        mThread.setHandler(handler);
+        mThread.start();
+
         ((android.widget.ImageView)l.getChildAt(0)).setImageResource(R.mipmap.walk_g);
         ((android.widget.ImageView)l.getChildAt(1)).setImageResource(R.mipmap.drive_g);
         ((android.widget.ImageView)l.getChildAt(2)).setImageResource(R.mipmap.bus_g);
     }
     
     public void clickWalk(View v){
-        resetTrans((android.widget.LinearLayout) v.getParent());
-        ((android.widget.ImageView)v).setImageResource(R.mipmap.walk_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
         String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
         helper.updateTransport(id, 0);
+        resetTrans((android.widget.LinearLayout) v.getParent());
+        ((android.widget.ImageView)v).setImageResource(R.mipmap.walk_c);
         Log.d("click", "walk:" + id);
     }
     
     public void clickDrive(View v){
-        resetTrans((android.widget.LinearLayout)v.getParent());
-        ((android.widget.ImageView)v).setImageResource(R.mipmap.drive_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout)v.getParent().getParent();
         String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
         helper.updateTransport(id, 1);
+        resetTrans((android.widget.LinearLayout) v.getParent());
+        ((android.widget.ImageView)v).setImageResource(R.mipmap.drive_c);
         Log.d("click", "Drive:" + id);
     }
     
     public void clickBus(View v){
-        resetTrans((android.widget.LinearLayout)v.getParent());
-        ((android.widget.ImageView)v).setImageResource(R.mipmap.bus_c);
         android.widget.RelativeLayout l = (android.widget.RelativeLayout) v.getParent().getParent();
         String id = ((android.widget.TextView)l.getChildAt(2)).getText().toString();
         helper.updateTransport(id, 2);
+        resetTrans((android.widget.LinearLayout) v.getParent());
+        ((android.widget.ImageView)v).setImageResource(R.mipmap.bus_c);
+
         Log.d("click", "Bus:" + id);
     }
 
     public void updateList(){
+        if(mThread != null && mThread.isAlive()) {
+            mThread.interrupt();
+        }
+        mThread = new myThread(mLastLocation.getLatitude()+","+mLastLocation.getLongitude(), Globals.FIRST_LOCATION, helper.getTransport(Globals.FIRST_ID));
+        handler = new myHandler();
+        mThread.setHandler(handler);
+        mThread.start();
+
         List<ItemData> events = helper.getEvents(selectedDay.toString());
+        mDataSet.clear();
+        mAdapter.notifyDataSetChanged();
+        mCredential.setSelectedAccountName(name);
         for (int i = 0; i < events.size(); ++i) {
             ItemData event = events.get(i);
             mDataSet.add(event);
@@ -719,4 +724,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public DataBaseHelper getDataBaseHelper(){
         return helper;
     }
+
+    public GoogleAccountCredential getCredential(){
+        return mCredential;
+    }
 }
+

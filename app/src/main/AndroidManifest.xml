@@ -20,6 +20,7 @@
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:theme="@style/ThemeOverlay.MyNoTitleActivity">
+
         </activity>
         <activity
             android:name=".TimeListActivity"
@@ -32,6 +33,7 @@
             android:name=".MainActivity"
             android:launchMode="singleTop"
             android:screenOrientation="portrait" />
+
 
         <meta-data
             android:name="com.google.android.gms.version"
@@ -54,6 +56,10 @@
             android:exported="true" />
         <service
             android:name=".MonitorService"
+            android:enabled="true"
+            android:exported="true" />
+        <service
+            android:name=".NotifyService"
             android:enabled="true"
             android:exported="true"></service>
     </application>

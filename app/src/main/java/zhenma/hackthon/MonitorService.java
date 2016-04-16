@@ -26,20 +26,25 @@ public class MonitorService extends Service {
     }
 
     @Override
-    public void onCreate() {
+    public int onStartCommand(Intent intent, int flags, int startId) {
         super.onCreate();
+        System.out.println("monitor service start");
+        new RequestCalendar(Globals.GOOGLE_ACCOUNT_CREDENTIAL).execute();
         autoCheck();
+        return super.onStartCommand(intent, flags, startId);
     }
 
     public void autoCheck(){
 
-        System.out.println(Globals.eventUnderTracking);
+
         CountDownTimer timer = new CountDownTimer(Globals.AUTO_CHECK_DURATION,1000) {
             @Override
             public void onTick(long millisUntilFinished) {
             }
             @Override
             public void onFinish() {
+
+                System.out.println("autocheck test");
 
                 SharedPreferences tempSP = getSharedPreferences("latestEvent", MODE_PRIVATE);
                 String temp = tempSP.getString("1Time", "");
@@ -68,6 +73,7 @@ public class MonitorService extends Service {
                 }
                 else{
                     //// TODO: 4/15/16 update event list
+
                     deltaTime = calculateWaitingTime(temp);
                 }
 
@@ -113,8 +119,7 @@ public class MonitorService extends Service {
         //calculate the waiting time, in min
         delta = (eventTime.getTime() - currentTime.getTime()) / 1000 / 60;
 
-        //update eventUnderTracking
-        Globals.eventUnderTracking = true;
+
 
 
         //date format transformation test

@@ -9,7 +9,9 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 
 public class NotifyService extends Service {
-    String res;
+
+    String event = null;
+    Long time;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -18,14 +20,19 @@ public class NotifyService extends Service {
     }
 
     public int onStartCommand(Intent intent, int flags, int startId) {
+
+        System.out.println("notification start");
         Bundle mBundle = intent.getExtras();
+
         if (mBundle != null) {
-            res = mBundle.getString("result");
+            event = mBundle.getString("event");
+            time = mBundle.getLong("time");
+
         }
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getApplicationContext())
                 .setSmallIcon(R.drawable.ic_app)
-                .setContentTitle("Time to go:")
-                .setContentText("Remaining Time:" + res);
+                .setContentTitle(event)
+                .setContentText("Remaining Time: "+time+" mins. It's time to go!" );
 
         // Sets an ID for the notification
         int mNotificationId = 001;

@@ -14,7 +14,7 @@ class myThread extends Thread{
 
     public myThread(String start, String end, int transport) {
         this.start = start;
-        this.end = end;
+        this.end = (end == null || end.equals("")) ? "+" : end;
         this.transport = transport;
     }
 
@@ -41,11 +41,12 @@ class myThread extends Thread{
             default:
                 mode = "walking";
         }
-        String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
+        String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyCOGAfDGxrDHfvjvCyHubzdS5NntrY5W3o";
+        Log.d("URL",url);
         while(true){
             try {
                 xml = httpclient.getXML(url);
-                System.out.println(xml);
+//                System.out.println(xml);
                 Message msg = handler.obtainMessage();
                 msg.obj = xml;
                 handler.sendMessage(msg);
