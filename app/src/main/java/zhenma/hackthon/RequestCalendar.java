@@ -1,5 +1,7 @@
 package zhenma.hackthon;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.util.Log;
@@ -19,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import java.util.Date;
+
 /**
  * Created by dnalwqer on 4/16/16.
  */
@@ -27,10 +31,11 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
     private com.google.api.services.calendar.Calendar mService = null;
     private Exception mLastError = null;
     private MainActivity activity;
-    private int today = Calendar.getInstance().get(Calendar.DATE);
     private long msPerDay = 86400000;
+    private int flag;
+    private Date requestTime;
 
-    public RequestCalendar(GoogleAccountCredential credential, MainActivity activity) {
+    public RequestCalendar(GoogleAccountCredential credential, MainActivity activity, int flag) {
         HttpTransport transport = AndroidHttp.newCompatibleTransport();
         JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
         mService = new com.google.api.services.calendar.Calendar.Builder(
@@ -38,6 +43,7 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
                 .setApplicationName("0Late")
                 .build();
         this.activity = activity;
+        this.flag = flag;
     }
 
     /**
@@ -48,6 +54,10 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
     @Override
     protected List<String> doInBackground(Void... params) {
         try {
+            if(flag == 0)
+                requestTime = activity.getSelectedDay();
+            else
+                requestTime = Calendar.getInstance().getTime();
             return getDataFromApi();
         } catch (Exception e) {
             Log.d("main", e.toString());
@@ -68,11 +78,11 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
         DateTime now = new DateTime(System.currentTimeMillis());
         List<String> eventStrings = new ArrayList<>();
         Events events;
-        if (activity.getSelectedDay().getDate() != today) {
+        if (!(new DateTime(Calendar.getInstance().getTime().getTime())).toString().equals(requestTime.toString())) {
             events = mService.events().list("primary")
                     .setMaxResults(10)
-                    .setTimeMin(new DateTime(activity.getSelectedDay().getTime()))
-                    .setTimeMax(new DateTime(activity.getSelectedDay().getTime() + msPerDay))
+                    .setTimeMin(new DateTime(requestTime.getTime()))
+                    .setTimeMax(new DateTime(requestTime.getTime() + msPerDay))
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
                     .execute();
@@ -80,7 +90,7 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
             events = mService.events().list("primary")
                     .setMaxResults(10)
                     .setTimeMin(now)
-                    .setTimeMax(new DateTime(activity.getSelectedDay().getTime() + msPerDay))
+                    .setTimeMax(new DateTime(requestTime.getTime() + msPerDay))
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
                     .execute();
@@ -98,6 +108,16 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
             eventStrings.add(event.getId());
         }
         activity.getDataBaseHelper().deleteRemoved(eventStrings,activity.getSelectedDay().toString());
+        if(flag == 1){
+            SharedPreferences sp = activity.getSharedPreferences("latestEvent", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sp.edit();
+            if(items.size()>0) {
+                editor.putString("1Time", items.get(0).getStart().getDateTime().toStringRfc3339());
+                editor.putString("1Event", items.get(0).getSummary());
+                editor.commit();
+            }
+            System.out.println("firstEventTime:" + items.get(0).getStart().getDateTime().toStringRfc3339());
+        }
         return eventStrings;
     }
 
@@ -108,19 +128,8 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
 
     @Override
     protected void onPostExecute(List<String> output) {
-//        activity.mAdapter.notifyItemInserted(0);
-//        activity.mLayoutManager.scrollToPosition(0);
-//        activity.handler = new myHandler();
-//        if (output.size() > 0) {
-//            String dest = output.get(0)[1];
-//            String ori = mLastLocation.getLatitude() + "," + mLastLocation.getLongitude();
-//            String mode = "";
-//            myThread t = new myThread(ori, dest, mode);
-//            t.setHandler();
-//            t.start();
-//            Log.d("main", "done");
-//        }
-        activity.updateList();
+        if(flag == 0)
+            activity.updateList();
     }
 
     @Override

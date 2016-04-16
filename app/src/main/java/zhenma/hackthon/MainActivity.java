@@ -281,8 +281,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else if (!isDeviceOnline()) {
             Toast.makeText(this, "No network connection available.", Toast.LENGTH_SHORT).show();
         } else {
-            new RequestCalendar(mCredential, this).execute();
-//            new MakeRequestTask(mCredential).execute();
+            new RequestCalendar(mCredential, this, 0).execute();
         }
     }
     
