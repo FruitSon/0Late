@@ -48,4 +48,5 @@
          from https://console.developers.google.com/ -->
     <string name="server_client_id">351272459861-l43efil31aq01gkr2dpomor23blcdkko.apps.googleusercontent.com</string>
     <string name="action_signout">Sign Out</string>
+    <string name="action_calendar">Calendar</string>
 </resources>

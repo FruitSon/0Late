@@ -2,31 +2,40 @@ package zhenma.hackthon;
 
 import android.Manifest;
 import android.accounts.AccountManager;
+import android.animation.Animator;
+import android.animation.ObjectAnimator;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.shapes.OvalShape;
 import android.location.Location;
 import android.location.LocationListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.AccelerateInterpolator;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.android.gms.auth.api.Auth;
@@ -53,45 +62,17 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.race604.flyrefresh.FlyRefreshLayout;
 
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
-import android.animation.Animator;
-import android.animation.AnimatorSet;
-import android.animation.ObjectAnimator;
-import android.content.Context;
-import android.graphics.Color;
-import android.graphics.drawable.ShapeDrawable;
-import android.graphics.drawable.shapes.OvalShape;
-import android.os.Bundle;
-import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
-import android.text.Layout;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.animation.AccelerateInterpolator;
-import android.widget.ImageView;
-import android.widget.TextView;
-
-import com.race604.flyrefresh.FlyRefreshLayout;
-
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
-import android.util.Log;
 
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
@@ -110,7 +91,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     //data
     private static final String TAG = "SignOutActivity";
     private GoogleApiClient mGoogleApiClient;
-    private TextView mTextView;
 
     private long msPerDay = 86400000;
 
@@ -119,8 +99,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private Date selectedDay = Calendar.getInstance().getTime();
 
     GoogleAccountCredential mCredential;
-    private TextView mOutputText;
-    ProgressDialog mProgress;
     private String name = "";
 
     static final int REQUEST_ACCOUNT_PICKER = 100;
@@ -138,32 +116,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main);
-
-        mOutputText = (TextView) findViewById(R.id.res);
-        mOutputText.setPadding(16, 16, 16, 16);
-        mOutputText.setVerticalScrollBarEnabled(true);
-        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        mOutputText.setText(
-                "Click the \'" + BUTTON_TEXT + "\' button to test the API.");
-
-        mProgress = new ProgressDialog(this);
-        mProgress.setMessage("Calling Google Calendar API ...");
-
-        mTextView = (TextView) findViewById(R.id.username);
-
         setContentView(R.layout.time_list);
-//        mOutputText = (TextView)findViewById(R.id.res);
-//        mOutputText.setPadding(16, 16, 16, 16);
-//        mOutputText.setVerticalScrollBarEnabled(true);
-//        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-//        mOutputText.setText(
-//                "Click the \'" + BUTTON_TEXT + "\' button to test the API.");
-//
-//        mProgress = new ProgressDialog(this);
-//        mProgress.setMessage("Calling Google Calendar API ...");
-//
-//        mTextView = (TextView) findViewById(R.id.username);
 
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
@@ -190,47 +143,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                //calendar,swipe horizontally
-                final MaterialCalendarView dialogView = (MaterialCalendarView) getLayoutInflater()
-                        .inflate(R.layout.horizontal_calendar, null, false);
-
-
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Pick the time")
-                        .setView(dialogView)
-                        .setNeutralButton("Cancel",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        dialogInterface.dismiss();
-                                    }
-                                }
-                        )
-                        .setPositiveButton("Confirm",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int which) {
-                                        selectedDay = dialogView.getSelectedDate().getDate();
-                                        DateTime datetime = new DateTime(selectedDay.getTime());
-                                        System.out.println(datetime);
-                                        dialogInterface.dismiss();
-////                                        getResultsFromApi();
-//                                        startActivityForResult(
-//                                                mCredential.newChooseAccountIntent(),
-//                                                REQUEST_ACCOUNT_PICKER);
-                                        mCredential.setSelectedAccountName(name);
-                                        freshData();
-                                    }
-                                }
-                        ).create().show();
-            }
-        });
 
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
@@ -299,6 +211,36 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
             startActivity(intent);
             return true;
+        }else if (id == R.id.action_calendar){
+            //calendar,swipe horizontally
+            final MaterialCalendarView dialogView = (MaterialCalendarView) getLayoutInflater()
+                    .inflate(R.layout.horizontal_calendar, null, false);
+
+
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Pick the time")
+                    .setView(dialogView)
+                    .setNeutralButton("Cancel",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    dialogInterface.dismiss();
+                                }
+                            }
+                    )
+                    .setPositiveButton("Confirm",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int which) {
+                                    selectedDay = dialogView.getSelectedDate().getDate();
+                                    DateTime datetime = new DateTime(selectedDay.getTime());
+                                    System.out.println(datetime);
+                                    dialogInterface.dismiss();
+                                    mCredential.setSelectedAccountName(name);
+                                    freshData();
+                                }
+                            }
+                    ).create().show();
         }
 
         return super.onOptionsItemSelected(item);
@@ -329,7 +271,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
         } else if (!isDeviceOnline()) {
-            mOutputText.setText("No network connection available.");
         } else {
             new MakeRequestTask(mCredential).execute();
         }
