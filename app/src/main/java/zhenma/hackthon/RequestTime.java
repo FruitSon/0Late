@@ -29,7 +29,7 @@ class myThread extends Thread{
         while(true){
             try {
                 xml = httpclient.getXML(url);
-                System.out.println(xml);
+//                System.out.println(xml);
                 Message msg = handler.obtainMessage();
                 msg.obj = xml;
                 handler.sendMessage(msg);

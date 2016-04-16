@@ -3,6 +3,7 @@ package zhenma.hackthon;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -96,7 +97,7 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
                     .execute();
         }
         List<Event> items = events.getItems();
-
+        
         for (Event event : items) {
             DateTime startTime = event.getStart().getDateTime();
             DateTime endTime = event.getEnd().getDateTime();

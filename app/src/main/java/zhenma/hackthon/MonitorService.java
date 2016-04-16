@@ -28,18 +28,21 @@ public class MonitorService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        System.out.println("monitor service start");
         autoCheck();
     }
 
     public void autoCheck(){
 
-        System.out.println(Globals.eventUnderTracking);
+
         CountDownTimer timer = new CountDownTimer(Globals.AUTO_CHECK_DURATION,1000) {
             @Override
             public void onTick(long millisUntilFinished) {
             }
             @Override
             public void onFinish() {
+
+                System.out.println("autocheck test");
 
                 SharedPreferences tempSP = getSharedPreferences("latestEvent", MODE_PRIVATE);
                 String temp = tempSP.getString("1Time", "");
@@ -113,8 +116,7 @@ public class MonitorService extends Service {
         //calculate the waiting time, in min
         delta = (eventTime.getTime() - currentTime.getTime()) / 1000 / 60;
 
-        //update eventUnderTracking
-        Globals.eventUnderTracking = true;
+
 
 
         //date format transformation test

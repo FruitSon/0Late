@@ -1,8 +1,12 @@
 package zhenma.hackthon;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.IBinder;
 
 import java.text.ParseException;
@@ -21,17 +25,18 @@ public class PollingService extends Service {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        System.out.println("polling service is started");
-        System.out.println("the xxx time for comparsions:" + (count++));
-        compareTime();
-
-    }
+//    @Override
+//    public void onCreate() {
+//        super.onCreate();
+//        System.out.println("polling service is started");
+//        System.out.println("the xxx time for comparsions:" + (count++));
+//        compareTime();
+//
+//    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        System.out.println("polling service is started");
         System.out.println("the xxx time for comparsions:"+(count++));
         compareTime();
         return super.onStartCommand(intent, flags, startId);
@@ -46,6 +51,7 @@ public class PollingService extends Service {
         //estimate time
         SharedPreferences sp3 = getSharedPreferences("latestEvent", MODE_PRIVATE);
         String temp = sp3.getString("1Time", "");
+
         String tempTime = temp.substring(0, 10) + " "+temp.substring(11, 19);
 
         Date currentTime = Calendar.getInstance().getTime();
@@ -70,12 +76,29 @@ public class PollingService extends Service {
 
 
         if(travelTime >= remainTime){
-            //// TODO: 4/15/16 update event list, event in sharedpreference
-            //// TODO: 4/15/16 start notification
+            //get Event title
+            SharedPreferences sp2 = getSharedPreferences("latestEvent", MODE_PRIVATE);
+            String event = sp2.getString("1Event","");
+
+            //send notification
             System.out.println("alerrrrrrrrrrrrrrrrrrrrrrrt! tessssssssst! ");
+            Intent notify = new Intent(this,NotifyService.class);
+            Bundle notificationData = new Bundle();
+            notificationData.putString("event", event);
+            notificationData.putLong("time", travelTime);
+            notify.putExtras(notificationData);
+
+            startService(notify);
+
             startService(new Intent(this, MonitorService.class));
-            Globals.eventUnderTracking = false;
-            //// TODO: 4/16/16  
+            AlarmManager alarmMgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            Intent i = new Intent(getApplicationContext(), PollingService.class);
+            PendingIntent pi2 = PendingIntent.getService(getApplicationContext(), 10, i,
+                    PendingIntent.FLAG_CANCEL_CURRENT);
+            alarmMgr.cancel(pi2);
+
+            // TODO: 4/15/16 update event list, event in sharedpreference
+
             stopSelf();
         }
     }
