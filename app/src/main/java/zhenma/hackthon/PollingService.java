@@ -86,54 +86,63 @@ public class PollingService extends Service {
         }
 
         //calculate the remaining time, in min
-        long remainTime = 0;
-        remainTime = (eventTime.getTime() - currentTime.getTime()) / 1000 / 60;
-        long travelTime = estimateTimeOnRoad();
+        int remainTime = 0;
+        remainTime = (int) (eventTime.getTime() - currentTime.getTime()) / 1000 / 60;
+        int travelTime = formatTime(estimateTimeOnRoad());
 
         //test
         System.out.println("TEST: travel time:" + travelTime);
         System.out.println("TEST: remain time:" + remainTime);
 
+        if(!res.equals("-1")) {
+            if (travelTime >= remainTime) {
 
-        if (travelTime >= remainTime) {
+                //send notification
+                System.out.println("alerrrrrrrrrrrrrrrrrrrrrrrt! tessssssssst! ");
+                Intent notify = new Intent(this, NotifyService.class);
+                Bundle notificationData = new Bundle();
+                notificationData.putString("event", Globals.FIRST_EVENT);
+                notificationData.putLong("time", remainTime);
+                notify.putExtras(notificationData);
 
-            //send notification
-            System.out.println("alerrrrrrrrrrrrrrrrrrrrrrrt! tessssssssst! ");
-            Intent notify = new Intent(this, NotifyService.class);
-            Bundle notificationData = new Bundle();
-            notificationData.putString("event", Globals.FIRST_EVENT);
-            notificationData.putLong("time", remainTime);
-            notify.putExtras(notificationData);
+                startService(notify);
 
-            startService(notify);
-
-            startService(new Intent(this, MonitorService.class));
-            AlarmManager alarmMgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            Intent i = new Intent(getApplicationContext(), PollingService.class);
-            PendingIntent pi2 = PendingIntent.getService(getApplicationContext(), 10, i,
-                    PendingIntent.FLAG_CANCEL_CURRENT);
-            alarmMgr.cancel(pi2);
+                startService(new Intent(this, MonitorService.class));
+                AlarmManager alarmMgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                Intent i = new Intent(getApplicationContext(), PollingService.class);
+                PendingIntent pi2 = PendingIntent.getService(getApplicationContext(), 10, i,
+                        PendingIntent.FLAG_CANCEL_CURRENT);
+                alarmMgr.cancel(pi2);
 
 
-            stopSelf();
+                stopSelf();
+            }
         }
     }
 
     private String estimateTimeOnRoad() {
-        Location curLocation;
+        Location curLocation = null;
 
         GoogleApiClient mGoogleApiClientLoc2 = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
                 .build();
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return 0;
+            return "0";
         }
         curLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc2);
+        myThread mThread;
 
         //Thread for google map
-        myThread mThread = new myThread(curLocation.getLatitude()+","+curLocation.getLongitude(),
-                Globals.FIRST_LOCATION,new DataBaseHelper(getApplicationContext()).getTransport());
+        if(curLocation!=null) {
+            mThread = new myThread(curLocation.getLatitude() + "," + curLocation.getLongitude(),
+                    Globals.FIRST_LOCATION, new DataBaseHelper(getApplicationContext()).getTransport(Globals.FIRST_ID));
+
+        }else{
+            mThread = new myThread("",
+                Globals.FIRST_LOCATION, new DataBaseHelper(getApplicationContext()).getTransport(Globals.FIRST_ID));
+
+        }
         Handler handler = new h();
         mThread.setHandler(handler);
         mThread.start();
@@ -163,6 +172,18 @@ public class PollingService extends Service {
             }
         }
 
+    }
+
+    public int formatTime(String t) {
+        String []res = t.split("\\s+");
+        int time = 0;
+        if (res.length > 2) {
+            time += Integer.parseInt(res[0]) * 60 + Integer.parseInt(res[2]);
+        }
+        else {
+            time += Integer.parseInt(res[0]);
+        }
+        return time;
     }
 
 }

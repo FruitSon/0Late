@@ -1,6 +1,5 @@
 package zhenma.hackthon;
 
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 
 /**
@@ -11,7 +10,6 @@ public class Globals {
     public static int POLLING_DURATION = 10000;    //10s
     public static int AUTO_CHECK_DURATION = 60000;     //1min
     public static GoogleAccountCredential GOOGLE_ACCOUNT_CREDENTIAL = null;
-    public static GoogleApiClient GOOGLE_API_CLIENT = null;
     public static String FIRST_LOCATION = null;
     public static String FIRST_EVENT = null;
     public static String FIRST_TIME = null;

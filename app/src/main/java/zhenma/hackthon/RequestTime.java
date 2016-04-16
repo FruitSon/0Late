@@ -25,7 +25,7 @@ class myThread extends Thread{
         String n_start = start.replace(" ", "+");
         String n_end = end.replace(" ", "+");
         System.out.println(n_start + " " + n_end);
-        String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
+        String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyCOGAfDGxrDHfvjvCyHubzdS5NntrY5W3o";
         while(true){
             try {
                 xml = httpclient.getXML(url);
