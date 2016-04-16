@@ -5,13 +5,17 @@ import android.accounts.AccountManager;
 import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
+import android.location.Location;
+import android.location.LocationListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -20,6 +24,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -41,9 +46,9 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationServices;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
@@ -88,13 +93,13 @@ import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
 
-public class MainActivity extends AppCompatActivity implements OnConnectionFailedListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRefreshListener {
-    //UI
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRefreshListener {
+  //UI
     private FlyRefreshLayout mFlylayout;
     private RecyclerView mListView;
-
     private ItemAdapter mAdapter;
-
     private ArrayList<ItemData> mDataSet = new ArrayList<>();
     private Handler mHandler = new Handler();
     private LinearLayoutManager mLayoutManager;
@@ -105,12 +110,13 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     private TextView mTextView;
     private Handler handler;
 
-    private long msPerDay = 86400000;
-
     //calendar
     private Date selectedDay = Calendar.getInstance().getTime();
+    private long msPerDay = 86400000;
 
     GoogleAccountCredential mCredential;
+    private TextView mOutputText;
+    ProgressDialog mProgress;
     private String name = "";
 
     static final int REQUEST_ACCOUNT_PICKER = 100;
@@ -118,9 +124,10 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 102;
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 103;
 
-    private static final String BUTTON_TEXT = "Call Google Calendar API";
     private static final String PREF_ACCOUNT_NAME = "accountName";
-    private static final String[] SCOPES = { CalendarScopes.CALENDAR_READONLY };
+    private static final String[] SCOPES = {CalendarScopes.CALENDAR_READONLY};
+    private GoogleApiClient mGoogleApiClientLoc;
+    private Location mLastLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -128,6 +135,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
         setContentView(R.layout.time_list);
         mTextView = (TextView) findViewById(R.id.res);
+
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
             name = mBundle.getString("username");
@@ -141,6 +149,13 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
+
+        // Location
+        mGoogleApiClientLoc = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
                 .build();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -188,6 +203,15 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         initialUI();
     }
 
+    protected void onStart() {
+        mGoogleApiClientLoc.connect();
+        super.onStart();
+    }
+
+    protected void onStop() {
+        mGoogleApiClientLoc.disconnect();
+        super.onStop();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -207,12 +231,12 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
                                                     int which) {
                                 }
                             }).setPositiveButton("OK",
-                            new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog,
-                                                int whichButton) {
-                                android.os.Process.killProcess(android.os.Process.myPid());
-                            }
-                        }).show();
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog,
+                                            int whichButton) {
+                            android.os.Process.killProcess(android.os.Process.myPid());
+                        }
+                    }).show();
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -262,11 +286,12 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
 
 
     private void getResultsFromApi() {
-        if (! isGooglePlayServicesAvailable()) {
+        if (!isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
-        } else if (! isDeviceOnline()) {
+        } else if (!isDeviceOnline()) {
+            mOutputText.setText("No network connection available.");
         } else {
             new MakeRequestTask(mCredential).execute();
         }
@@ -321,7 +346,7 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     protected void onActivityResult(
             int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch(requestCode) {
+        switch (requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
 
@@ -449,6 +474,56 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
         dialog.show();
     }
 
+    @Override
+    public void onConnected(Bundle bundle) {
+        Log.d("onConnected", "Yes");
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            Log.d("permission denied","true");
+            return;
+        }
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                mGoogleApiClientLoc);
+
+        if (mLastLocation != null) {
+            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
+            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
+        }else {
+            Log.d("mLastLocation==null","true");
+        }
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
+    }
+
     /**
      * An asynchronous task that handles the Google Calendar API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
@@ -532,13 +607,14 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
             mAdapter.notifyItemInserted(0);
             mLayoutManager.scrollToPosition(0);
             handler = new myHandler();
-//            String dest = output.get(0)[1];
-            String ori = "Sachem Circle Hanover NH";
-            String dest = "Dartmouth Hall NH";
-            String mode = "";
-            Thread t = new myThread(ori, dest, mode);
-            t.start();
-            Log.d("main","done");
+            if (output.size() > 0) {
+                String dest = output.get(0)[1];
+                String ori = mLastLocation.getLatitude()+","+mLastLocation.getLongitude();
+                String mode = "";
+                Thread t = new myThread(ori, dest, mode);
+                t.start();
+                Log.d("main","done");
+            }
         }
 
         @Override
@@ -648,9 +724,6 @@ public class MainActivity extends AppCompatActivity implements OnConnectionFaile
     }
 
     private void freshData() {
-//        mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, "Meeting Minutes", new Date(2014 - 1900, 2, 9)));
-//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Favorites Photos", new Date(2014 - 1900, 1, 3)));
-//        mDataSet.add(new ItemData(Color.GRAY, R.mipmap.ic_assessment_white_24dp, "Photos", new Date(2014 - 1900, 0, 9)));
         Log.d("main","fresh");
         mDataSet.clear();
         mAdapter.notifyDataSetChanged();

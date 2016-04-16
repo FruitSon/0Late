@@ -39,6 +39,6 @@ dependencies {
         exclude group: 'org.apache.httpcomponents'
     }
     compile 'com.prolificinteractive:material-calendarview:1.2.0'
+    compile 'com.google.android.gms:play-services-location:8.4.0'
 }
-
 apply plugin: 'com.google.gms.google-services'
