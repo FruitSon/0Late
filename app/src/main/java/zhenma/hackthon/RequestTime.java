@@ -42,7 +42,7 @@ class myThread extends Thread{
                 mode = "walking";
         }
         String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyCOGAfDGxrDHfvjvCyHubzdS5NntrY5W3o";
-        Log.d("URL",url);
+
         while(true){
             try {
                 xml = httpclient.getXML(url);

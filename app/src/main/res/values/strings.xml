@@ -3,7 +3,8 @@
     <string name="action_settings">Sign Out</string>
 
 
-    <string name="title_text">Google Calendar\nSign-in</string>
+    <string name="app_text">0Late</string>
+    <string name="title_text">Never be late\n Deadline</string>
     <!-- Sign in values-->
     <!-- Button labels -->
     <!-- Sign-in status messages -->

@@ -32,9 +32,7 @@ import java.util.Date;
 import java.util.Locale;
 import android.util.Log;
 
-/**
- * Created by xuehanyu on 4/13/16.
- */
+
 public class TimeListActivity extends AppCompatActivity implements FlyRefreshLayout.OnPullRefreshListener {
     private FlyRefreshLayout mFlylayout;
     private RecyclerView mListView;

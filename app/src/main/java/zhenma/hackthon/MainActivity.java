@@ -152,9 +152,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         initialUI();
 
         Globals.GOOGLE_ACCOUNT_CREDENTIAL = mCredential;
-        Globals.GOOGLE_API_CLIENT = mGoogleApiClientLoc;
 
-//        startService(new Intent(this, MonitorService.class));
+        startService(new Intent(this, MonitorService.class));
     }
     
     protected void onStart() {
@@ -460,15 +459,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                                                                          mGoogleApiClientLoc);
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc);
         
         if (mLastLocation != null) {
-//            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
-//            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
+            Log.d("Latitude: ", "" + mLastLocation.getLatitude());
+            Log.d("Longitude: ", "" + mLastLocation.getLongitude());
         }else {
-//            Log.d("mLastLocation==null","true");
+            Log.d("mLastLocation==null","true");
         }
+
+
         //Thread for google map
 
         freshData();

@@ -6,6 +6,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.webkit.WebView;
+import android.widget.FrameLayout;
+
 
 public class AppActivity extends AppCompatActivity {
 
@@ -15,8 +18,14 @@ public class AppActivity extends AppCompatActivity {
         final View view = View.inflate(this, R.layout.activity_app, null);
         setContentView(view);
 
-        AlphaAnimation start = new AlphaAnimation(0.2f, 1.0f);
-        start.setDuration(2000);
+
+        FrameLayout d = (FrameLayout) findViewById(R.id.test);
+        WebView wView = new WebView(this);
+        wView.loadUrl("file:///android_asset/2.gif");
+
+        d.addView(wView);
+        AlphaAnimation start = new AlphaAnimation(0.9f, 1.0f);
+        start.setDuration(3000);
         view.startAnimation(start);
         start.setAnimationListener(new Animation.AnimationListener() {
             @Override
@@ -35,6 +44,5 @@ public class AppActivity extends AppCompatActivity {
             }
 
         });
-
     }
 }

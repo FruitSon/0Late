@@ -10,9 +10,6 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 
-/**
- * Created by dnalwqer on 4/15/16.
- */
 public class UtilHelper {
     public HttpClient httpclient;
     public UtilHelper(){

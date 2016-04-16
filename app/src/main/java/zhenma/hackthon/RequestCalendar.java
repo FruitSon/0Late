@@ -50,7 +50,6 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
                 .setApplicationName("0Late")
                 .build();
         this.flag = 1;
-        Log.d("time","0000000000000000000000000000000");
     }
 
     /**
@@ -103,6 +102,7 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
                     .execute();
         }
         List<Event> items = events.getItems();
+        System.out.println("flag:" + flag);
 
         if(flag == 0) {
             for (Event event : items) {
@@ -117,15 +117,13 @@ class RequestCalendar extends AsyncTask<Void, Void, List<String>> {
             }
 
             activity.getDataBaseHelper().deleteRemoved(eventStrings, activity.getSelectedDay().toString());
-        }else{
-            if(items.size()>0) {
+        }else {
+            if (items.size() > 0) {
                 Globals.FIRST_TIME = items.get(0).getStart().getDateTime().toStringRfc3339();
                 Globals.FIRST_EVENT = items.get(0).getSummary();
                 Globals.FIRST_LOCATION = items.get(0).getLocation();
-                Log.d("Location",Globals.FIRST_LOCATION);
                 Globals.FIRST_ID = items.get(0).getId();
             }
-            Log.d("Location",Globals.FIRST_LOCATION);
         }
         return eventStrings;
     }

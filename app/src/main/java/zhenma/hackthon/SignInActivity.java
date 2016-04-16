@@ -2,6 +2,7 @@ package zhenma.hackthon;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -33,6 +34,7 @@ public class SignInActivity extends AppCompatActivity implements
 
     private GoogleApiClient mGoogleApiClient;
     private TextView mStatusTextView;
+    private TextView mTitleTextView;
     private ProgressDialog mProgressDialog;
 
     @Override
@@ -44,6 +46,10 @@ public class SignInActivity extends AppCompatActivity implements
         mStatusTextView = (TextView) findViewById(R.id.status);
         mStatusTextView.setVisibility(View.INVISIBLE);
 
+        mTitleTextView = (TextView) findViewById(R.id.title_text);
+        Typeface type = Typeface.createFromAsset(getAssets(),"fonts/HelveticaNeue-UltraLight.ttf");
+        mTitleTextView.setTypeface(type);
+
         Bundle mBundle = getIntent().getExtras();
         if (mBundle != null) {
             int flag = mBundle.getInt("isSignOut");
@@ -53,7 +59,7 @@ public class SignInActivity extends AppCompatActivity implements
         }
 
         // Button listeners
-        findViewById(R.id.sign_in_button).setOnClickListener(this);
+//        findViewById(R.id.sign_in_button).setOnClickListener(this);
 //        findViewById(R.id.sign_out_button).setOnClickListener(this);
 //        findViewById(R.id.disconnect_button).setOnClickListener(this);
 
@@ -83,8 +89,9 @@ public class SignInActivity extends AppCompatActivity implements
         // Scopes.PLUS_LOGIN scope to the GoogleSignInOptions to see the
         // difference.
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
-        signInButton.setSize(SignInButton.SIZE_STANDARD);
+        signInButton.setSize(SignInButton.SIZE_WIDE);
         signInButton.setScopes(gso.getScopeArray());
+        signInButton.setOnClickListener(this);
         // [END customize_button]
     }
 
