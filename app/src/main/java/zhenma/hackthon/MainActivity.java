@@ -40,6 +40,7 @@ import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -64,13 +65,6 @@ import com.google.api.services.calendar.model.Events;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.race604.flyrefresh.FlyRefreshLayout;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -96,7 +90,7 @@ import pub.devrel.easypermissions.EasyPermissions;
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener, EasyPermissions.PermissionCallbacks,FlyRefreshLayout.OnPullRefreshListener {
-  //UI
+    //UI
     private FlyRefreshLayout mFlylayout;
     private RecyclerView mListView;
     private ItemAdapter mAdapter;
@@ -105,7 +99,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private LinearLayoutManager mLayoutManager;
 
     //data
-    private static final String TAG = "SignOutActivity";
+    private static final String TAG = "SignOut";
     private GoogleApiClient mGoogleApiClient;
     private TextView mTextView;
     private Handler handler;
@@ -113,9 +107,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     //calendar
     private Date selectedDay = Calendar.getInstance().getTime();
     private long msPerDay = 86400000;
+    private int today = Calendar.getInstance().get(Calendar.DATE);
 
     GoogleAccountCredential mCredential;
-    private TextView mOutputText;
     ProgressDialog mProgress;
     private String name = "";
 
@@ -184,8 +178,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                     @Override
                                     public void onClick(DialogInterface dialogInterface, int which) {
                                         selectedDay = dialogView.getSelectedDate().getDate();
-                                        DateTime datetime = new DateTime(selectedDay.getTime());
-                                        System.out.println(datetime);
                                         dialogInterface.dismiss();
                                         mCredential.setSelectedAccountName(name);
                                         freshData();
@@ -289,9 +281,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (!isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
         } else if (mCredential.getSelectedAccountName() == null) {
+            mCredential.setSelectedAccountName(name);
             chooseAccount();
         } else if (!isDeviceOnline()) {
-            mOutputText.setText("No network connection available.");
+            Toast.makeText(this, "No network connection available.", Toast.LENGTH_SHORT).show();
         } else {
             new MakeRequestTask(mCredential).execute();
         }
@@ -311,8 +304,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private void chooseAccount() {
         if (EasyPermissions.hasPermissions(
                 this, Manifest.permission.GET_ACCOUNTS)) {
-            String accountName = getPreferences(Context.MODE_PRIVATE)
-                    .getString(PREF_ACCOUNT_NAME, null);
+            String accountName = name;
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
                 getResultsFromApi();
@@ -359,7 +351,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                         data.getExtras() != null) {
                     String accountName =
                             data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-                    System.out.println(accountName);
                     if (accountName != null) {
                         SharedPreferences settings =
                                 getPreferences(Context.MODE_PRIVATE);
@@ -478,13 +469,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onConnected(Bundle bundle) {
         Log.d("onConnected", "Yes");
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             Log.d("permission denied","true");
             return;
         }
@@ -566,13 +550,25 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             // List the next 10 events from the primary calendar.
             DateTime now = new DateTime(System.currentTimeMillis());
             List<String[]> eventStrings = new ArrayList<>();
-            Events events = mService.events().list("primary")
-                    .setMaxResults(10)
-                    .setTimeMin(new DateTime(selectedDay.getTime()))
-                    .setTimeMax(new DateTime(selectedDay.getTime() + 86400000))
-                    .setOrderBy("startTime")
-                    .setSingleEvents(true)
-                    .execute();
+            Events events;
+            if (selectedDay.getDate() != today) {
+                events = mService.events().list("primary")
+                        .setMaxResults(10)
+                        .setTimeMin(new DateTime(selectedDay.getTime()))
+                        .setTimeMax(new DateTime(selectedDay.getTime() + msPerDay))
+                        .setOrderBy("startTime")
+                        .setSingleEvents(true)
+                        .execute();
+            }
+            else {
+                events = mService.events().list("primary")
+                        .setMaxResults(10)
+                        .setTimeMin(now)
+                        .setTimeMax(new DateTime(selectedDay.getTime() + msPerDay))
+                        .setOrderBy("startTime")
+                        .setSingleEvents(true)
+                        .execute();
+            }
             List<Event> items = events.getItems();
 
             for (Event event : items) {
@@ -581,12 +577,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 String eventName = event.getSummary();
                 String location = event.getLocation();
                 Log.d("main", eventName);
-                mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, eventName, startTime));
-                if (startTime == null) {
-                    // All-day events don't have start times, so just use
-                    // the start date.
-                    startTime = event.getStart().getDate();
-                }
+                String s_time[] = startTime.toString().split("T");
+                String format_time = s_time[0] + " " + s_time[1].substring(0, 5);
+                mDataSet.add(new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp, eventName, format_time));
                 String []res = new String[4];
                 res[0] = eventName;
                 res[1] = location;
@@ -641,7 +634,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         @Override
         public void handleMessage(Message msg) {
-            // TODO Auto-generated method stub
             String xml=(String)msg.obj;
             DocumentBuilderFactory factory=DocumentBuilderFactory.newInstance();
             try {
@@ -653,9 +645,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 NodeList nodelist = root.getElementsByTagName("duration");
                 Element element = (Element)nodelist.item(0);
                 String res = element.getElementsByTagName("text").item(0).getFirstChild().getNodeValue();
-                System.out.println(res);
+                mTextView.setText(res);
+                System.out.println("Get the result");
+
+                //start service
+                Intent intent = new Intent(getApplicationContext(), NotifyService.class);
+                Bundle mbundle = new Bundle();
+                mbundle.putString("result", res);
+                intent.putExtras(mbundle);
+                startService(intent);
             } catch (Exception e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
@@ -670,17 +669,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             this.mode = mode;
         }
         public void run(){
-            http httpclient = new http();
+            UtilHelper httpclient = new UtilHelper();
             String xml;
             String n_start = start.replace(" ", "+");
             String n_end = end.replace(" ", "+");
             System.out.println(n_start + " " + n_end);
-            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
+            String url = "https://maps.googleapis.com/maps/api/distancematrix/xml?mode="+mode+"&origins="+n_start+"&destinations="+n_end+"&key=AIzaSyA5BpNODJx6fklPTQmkSwDyP0D9p1QGMyo";
             while(true){
                 try {
                     xml = httpclient.getXML(url);
-                    System.out.println(url);
-                    System.out.println(xml);
                     Message msg = handler.obtainMessage();
                     msg.obj = xml;
                     handler.sendMessage(msg);
@@ -698,17 +695,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         getSupportActionBar().setDisplayShowTitleEnabled(false);
 
         mFlylayout = (FlyRefreshLayout) findViewById(R.id.fly_layout);
-
         mFlylayout.setOnPullRefreshListener(this);
 
         mListView = (RecyclerView) findViewById(R.id.list);
-
         mLayoutManager = new LinearLayoutManager(this);
         mListView.setLayoutManager(mLayoutManager);
         mAdapter = new ItemAdapter(this);
 
         mListView.setAdapter(mAdapter);
-
         mListView.setItemAnimator(new TimeListItem());
 
         View actionButton = mFlylayout.getHeaderActionButton();
@@ -730,14 +724,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         mCredential.setSelectedAccountName(name);
         Log.d("main_Name",name);
         getResultsFromApi();
-    }
-
-    private void addItemData() {
-        mDataSet.clear();
-        mAdapter.notifyDataSetChanged();
-
-        mAdapter.notifyItemInserted(0);
-        mLayoutManager.scrollToPosition(0);
     }
 
     @Override
@@ -849,26 +835,3 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         Log.d("click", "Bus:" + textView.getText());
     }
 }
-
-class http {
-    private HttpClient httpclient;
-    public http(){
-        httpclient=new DefaultHttpClient();
-    }
-
-    public String getXML(String url) throws ClientProtocolException, IOException {
-        String xml = null;
-        HttpGet httpget = new HttpGet(url);
-        HttpResponse response = httpclient.execute(httpget);
-        if (response.getStatusLine().getStatusCode() == 200) {
-            HttpEntity entity = response.getEntity();
-            if (entity != null) {
-                xml = EntityUtils.toString(entity);
-            }
-        }
-        return xml;
-    }
-}
-
-
-
