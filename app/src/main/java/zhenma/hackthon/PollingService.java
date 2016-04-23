@@ -6,15 +6,17 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
+
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationListener;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 
+import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 
@@ -31,11 +33,17 @@ import java.util.Date;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-public class PollingService extends Service {
+
+public class PollingService extends Service implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
 
     String res = "-1";
+    Location curLocation = null;
+    GoogleApiClient mGoogleApiClientLoc2;
 
     public PollingService() {
+
     }
 
     int count = 0;
@@ -58,6 +66,12 @@ public class PollingService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         System.out.println("polling service is started");
         System.out.println("the xxx time for comparsions:" + (count++));
+
+        mGoogleApiClientLoc2 = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
         compareTime();
         return super.onStartCommand(intent, flags, startId);
     }
@@ -69,8 +83,7 @@ public class PollingService extends Service {
 
     public void compareTime() {
         //estimate time
-        SharedPreferences sp3 = getSharedPreferences("latestEvent", MODE_PRIVATE);
-        String temp = sp3.getString("1Time", "");
+        String temp = Globals.FIRST_TIME;
 
         String tempTime = temp.substring(0, 10) + " " + temp.substring(11, 19);
 
@@ -86,6 +99,7 @@ public class PollingService extends Service {
         }
 
         //calculate the remaining time, in min
+
         int remainTime = 0;
         remainTime = (int) (eventTime.getTime() - currentTime.getTime()) / 1000 / 60;
         int travelTime = formatTime(estimateTimeOnRoad());
@@ -93,6 +107,7 @@ public class PollingService extends Service {
         //test
         System.out.println("TEST: travel time:" + travelTime);
         System.out.println("TEST: remain time:" + remainTime);
+
 
         if(!res.equals("-1")) {
             if (travelTime >= remainTime) {
@@ -121,32 +136,75 @@ public class PollingService extends Service {
     }
 
     private String estimateTimeOnRoad() {
-        Location curLocation = null;
 
-        GoogleApiClient mGoogleApiClientLoc2 = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .build();
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return "0";
+        if (mGoogleApiClientLoc2 != null) {
+            mGoogleApiClientLoc2.connect();
         }
-        curLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc2);
+
+        System.out.println("Current LOCATION"+curLocation);
         myThread mThread;
 
         //Thread for google map
         if(curLocation!=null) {
+
+            System.out.println("Globals:"+Globals.FIRST_LOCATION);
+            System.out.println(new DataBaseHelper(getApplicationContext()).getTransport(Globals.FIRST_ID));
+            System.out.println(Globals.FIRST_TIME);
+
             mThread = new myThread(curLocation.getLatitude() + "," + curLocation.getLongitude(),
                     Globals.FIRST_LOCATION, new DataBaseHelper(getApplicationContext()).getTransport(Globals.FIRST_ID));
 
         }else{
+            System.out.println("Globals curlocation = null:"+Globals.FIRST_LOCATION);
+            System.out.println(new DataBaseHelper(getApplicationContext()).getTransport(Globals.FIRST_ID));
+            System.out.println(Globals.FIRST_TIME);
             mThread = new myThread("",
                 Globals.FIRST_LOCATION, new DataBaseHelper(getApplicationContext()).getTransport(Globals.FIRST_ID));
+
 
         }
         Handler handler = new h();
         mThread.setHandler(handler);
         mThread.start();
         return res;
+    }
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        curLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClientLoc2);
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+
     }
 
     class h extends Handler {

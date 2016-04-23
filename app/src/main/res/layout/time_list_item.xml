@@ -55,24 +55,24 @@
             android:layout_alignParentRight="true"
             android:layout_centerVertical="true">
             <ImageView
-                android:layout_width="25dp"
-                android:layout_height="25dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_margin="3dp"
                 android:id="@+id/walk"
                 android:onClick="clickWalk"
                 android:scaleType="centerInside"
                 android:src="@mipmap/walk_g" />
             <ImageView
-                android:layout_width="25dp"
-                android:layout_height="25dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_margin="3dp"
                 android:id="@+id/drive"
                 android:onClick="clickDrive"
                 android:scaleType="centerInside"
                 android:src="@mipmap/drive_g" />
             <ImageView
-                android:layout_width="25dp"
-                android:layout_height="25dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_margin="3dp"
                 android:id="@+id/bus"
                 android:onClick="clickBus"

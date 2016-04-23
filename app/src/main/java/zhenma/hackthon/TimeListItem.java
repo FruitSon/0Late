@@ -10,9 +10,7 @@ import android.view.animation.OvershootInterpolator;
 
 import jp.wasabeef.recyclerview.animators.BaseItemAnimator;
 
-/**
- * Created by xuehanyu on 4/13/16.
- */
+
 public class TimeListItem extends BaseItemAnimator {
 
     @Override

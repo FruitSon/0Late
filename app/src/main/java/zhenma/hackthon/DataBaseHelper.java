@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by xuehanyu on 4/15/16.
+ * Created by xuehanyu on 4/16/16.
  */
 public class DataBaseHelper extends SQLiteOpenHelper {
     private final static String DATABASE_NAME = "Calender_Event";
@@ -88,12 +88,12 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public List<ItemData> getEvents(String Date){
         SQLiteDatabase db = this.getWritableDatabase();
         Cursor cursor = db.rawQuery("select * from " + TABLE_NAME + " where Date=?", new String[]{Date});
-          List<ItemData> result = new ArrayList<>();
+        List<ItemData> result = new ArrayList<>();
         if(cursor.getCount() > 0) {
             cursor.moveToFirst();
             while (!cursor.isAfterLast()) {
                 ItemData thisEvent = new ItemData(Color.parseColor("#76A9FC"), R.mipmap.ic_assessment_white_24dp,
-                        cursor.getString(2), cursor.getString(1), R.mipmap.walk_g,
+                        cursor.getString(2), cursor.getString(3), R.mipmap.walk_g,
                         R.mipmap.drive_g, R.mipmap.bus_g, cursor.getString(0), Date.toString());
                 switch (cursor.getInt(4)){
                     case 0:
@@ -111,5 +111,17 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             }
         }
         return result;
+    }
+
+    public int getTransport(String id){
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery("select Transport from " + TABLE_NAME + " where ID=?", new String[]{id});
+        if(cursor.getCount() > 0) {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                return cursor.getInt(0);
+            }
+        }
+        return -1;
     }
 }
