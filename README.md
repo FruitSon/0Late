@@ -1,6 +1,7 @@
 # 0Late
 project for hackDay2016,An android app advanced google calendar's reminder function based on users' real time location.
- <img src="pics/2.gif" width = "300" height = "200" align=center />
+
+<img src="pics/2.gif" align=center />
 
 # Inspiration
 Has everybody used google calendar? It could notify us our daily event and manage our daily life well. However. Have you met this kind of situation? Like, yesterday I have a group meeting with my teammates. I almost forgot it until my google calendar sent a notification. As usual I set a 10-minutes-before notification for this event. So, when I noticed it, I only have 10 minutes to run to Sudikoff, and my home is out of town.
